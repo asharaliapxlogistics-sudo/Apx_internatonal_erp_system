@@ -50,7 +50,7 @@ const CARRIER_SITES = {
   usps: ['USPS', (n) => `https://tools.usps.com/tracking/${n}`],
   dhl: ['DHL', (n) => `https://www.dhl.com/gb-en/home/tracking.html?submit=1&tracking-id=${n}`],
   fedex: ['FedEx', (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`],
-  ups: ['UPS', (n) => `https://www.ups.com/track?tracknum=${n}`],
+  ups: ['UPS', (n) => `https://www.ups.com/track?loc=en_GB&tracknum=${n}`],
   'royal mail': ['Royal Mail', (n) => `https://www.royalmail.com/track-your-item#/tracking-results/${n}`],
   aramex: ['Aramex', (n) => `https://www.aramex.com/track/results?ShipmentNumber=${n}`],
 }
