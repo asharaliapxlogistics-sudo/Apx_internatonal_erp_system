@@ -7,7 +7,33 @@ export const COUNTRIES = [
   'Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Turkey', 'Qatar', 'Oman', 'Bahrain', 'Kuwait', 'China',
   'Malaysia', 'Japan',
 ]
-export const SERVICES = ['Direct UK DPD', 'DHL Express', 'FedEx Priority', 'UPS Express', 'Economy']
+// APX service list (SERVICES.pdf, Oct 2026).
+export const SERVICES = [
+  'VIA UK UPS (SAVER)',
+  'VIA UK DHL',
+  'SINGAPORE FEDEX',
+  'DIRECT AUSTRALIA',
+  'DIRECT DUBAI',
+  'VIA DUBAI FEDEX',
+  'VIA DUBAI DHL',
+  'VIA DUBAI UPS',
+  'DUBAI ARAMEX',
+  'DHL EUROPE VIA BELFAST (DUTY PAID)',
+  'LOCAL DUBAI DUTY PAID',
+  'DIRECT CANADA DUTY PAID',
+  'DIRECT UK DPD',
+  'VIA UK UPS (EXPEDITED)',
+  'GCC DUTY PAID',
+  'UPS EUROPE VIA BELFAST (DUTY PAID)',
+  'USA DUTY PAID FEDEX',
+  'DPD DUTY PAID GERMANY',
+  'USA/CA SAVER VIA AMS',
+  'USA UPS DUTY PAID E-COMMERCE',
+  'USA DIRECT DUTY PAID UPS',
+  'USA DUTY PAID FEDEX S.P ECO',
+  'DIRECT USA DUTY PAID UPS ECONOMY',
+  'DIRECT USA DUTY PAID FEDEX ECONOMY',
+]
 
 // Volumetric weight per piece = L x W x H (cm) / 5000, rounded up to the next whole KG.
 // Matches the existing APX AWBs (85x55x52 + 55x55x68 => 49 + 42 = 91 KG).

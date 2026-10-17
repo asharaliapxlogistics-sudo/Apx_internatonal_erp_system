@@ -12,6 +12,7 @@ function CarrierCell({ shipment, onSaved }) {
   const [value, setValue] = useState(shipment.carrierTracking)
   const [state, setState] = useState('') // '' | saving | saved | error
   const carrier = carrierFor(shipment)
+  const label = carrier || 'Carrier'
 
   async function save() {
     const next = value.trim()
@@ -35,14 +36,14 @@ function CarrierCell({ shipment, onSaved }) {
         }}
         onBlur={save}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-        placeholder={`${carrier} no…`}
-        aria-label={`${carrier} number for AWB ${shipment.awb.number}`}
+        placeholder={`${label} no…`}
+        aria-label={`${label} number for AWB ${shipment.awb.number}`}
         className={`w-full rounded-lg border px-2 py-1 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none ${
           state === 'error' ? 'border-accent-500' : 'border-transparent bg-slate-50 hover:border-slate-300'
         }`}
       />
       <p className={`mt-0.5 text-xs ${state === 'error' ? 'text-accent-600' : state === 'saved' ? 'text-emerald-600' : 'text-slate-500'}`}>
-        {state === 'saving' ? 'Saving…' : state === 'saved' ? `${carrier} · saved` : state === 'error' ? 'Not saved, try again' : carrier}
+        {state === 'saving' ? 'Saving…' : state === 'saved' ? `${label} · saved` : state === 'error' ? 'Not saved, try again' : label}
       </p>
     </div>
   )

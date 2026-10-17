@@ -32,11 +32,13 @@ export const statusInfo = (name) => byName[name] ?? STATUSES[0]
 
 export const CARRIERS = ['DPD', 'DHL', 'FedEx', 'UPS', 'Royal Mail', 'Aramex', 'TCS']
 
-// The delivery partner a shipment's service goes with (e.g. "Direct UK DPD" → DPD), until staff pick one.
+// The delivery partner a shipment's service goes with (e.g. "DIRECT UK DPD" → DPD), until staff pick one.
+// Services that name no partner (e.g. "DIRECT DUBAI") give ''.
 export function carrierFor(shipment) {
   if (shipment.carrier) return shipment.carrier
-  const service = (shipment.awb.service || '').toLowerCase()
-  return CARRIERS.find((c) => service.includes(c.toLowerCase())) ?? 'DPD'
+  // Whole words only, padded with spaces: "VIA UK UPS (SAVER)" → " via uk ups saver ".
+  const words = ` ${(shipment.awb.service || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `
+  return CARRIERS.find((c) => words.includes(` ${c.toLowerCase()} `)) ?? ''
 }
 
 // The carrier's own tracking page for a number, where we know it.
