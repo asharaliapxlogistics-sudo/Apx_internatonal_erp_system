@@ -48,7 +48,7 @@ const CARRIER_SITES = {
   'dpd germany': ['DPD Germany', (n) => `https://tracking.dpd.de/status/en_US/parcel/${n}`],
   skynet: ['Skynet', (n) => `https://www.snwwe.com/pk-en/track-shipment?AWB=${n}`],
   usps: ['USPS', (n) => `https://tools.usps.com/tracking/${n}`],
-  dhl: ['DHL', (n) => `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`],
+  dhl: ['DHL', (n) => `https://www.dhl.com/gb-en/home/tracking.html?submit=1&tracking-id=${n}`],
   fedex: ['FedEx', (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`],
   ups: ['UPS', (n) => `https://www.ups.com/track?tracknum=${n}`],
   'royal mail': ['Royal Mail', (n) => `https://www.royalmail.com/track-your-item#/tracking-results/${n}`],
