@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Same palette as the APX website: logo navy #030168 and red #ff030a */
+  --color-ink-950: #02012a;
+  --color-ink-900: #050340;
+  --color-ink-800: #0a0760;
+  --color-ink-700: #120f85;
+
+  --color-brand-50: #eeeeff;
+  --color-brand-100: #dcdbff;
+  --color-brand-400: #7b78ff;
+  --color-brand-500: #2b28c9;
+  --color-brand-600: #030168;
+  --color-brand-700: #02014d;
+
+  --color-accent-400: #ff4d53;
+  --color-accent-500: #f2111a;
+  --color-accent-600: #d0000a;
+}
+
+body {
+  @apply bg-slate-50 font-sans text-slate-700 antialiased;
+}
+
+::selection {
+  @apply bg-accent-500 text-white;
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Printing: only the .print-area is printed (e.g. Air Waybills). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .print-page-break {
+    break-after: page;
+  }
+  .print-page-start {
+    padding-top: 8mm;
+  }
+  body {
+    background: #fff;
+  }
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-accent-400 via-accent-500 to-brand-400 bg-clip-text text-transparent;
+}

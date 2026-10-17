@@ -1,0 +1,298 @@
+/* Monthly invoice print layout (A4 portrait) with APX letterhead. */
+
+.inv-sheet {
+  --inv-navy: #030168;
+  --inv-red: #f2111a;
+  --inv-ink: #0f172a;
+  --inv-muted: #64748b;
+  --inv-line: #e2e8f0;
+  --inv-soft: #f5f6fb;
+
+  background: #fff;
+  color: var(--inv-ink);
+  font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px 4px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+
+  /* Page-shaped sheet so the footer sits at the bottom of the page. */
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: 210 / 297;
+}
+
+@media print {
+  .inv-sheet {
+    aspect-ratio: auto;
+    /* A4 height minus the 10mm top/bottom padding of .print-area */
+    min-height: 276mm;
+  }
+}
+
+.inv-sheet p,
+.inv-sheet dl,
+.inv-sheet dd,
+.inv-sheet h1 {
+  margin: 0;
+}
+
+/* Letterhead */
+.inv-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.inv-logo {
+  height: 64px;
+}
+
+.inv-company {
+  text-align: right;
+  color: var(--inv-muted);
+  font-size: 11.5px;
+}
+
+.inv-company-name {
+  color: var(--inv-navy);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.inv-band {
+  height: 5px;
+  margin: 14px 0 22px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--inv-navy) 0 72%, var(--inv-red) 72% 100%);
+}
+
+/* Bill to + invoice details */
+.inv-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 22px;
+}
+
+.inv-eyebrow {
+  color: var(--inv-red);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 4px !important;
+}
+
+.inv-billto {
+  color: var(--inv-muted);
+}
+
+.inv-customer {
+  color: var(--inv-ink);
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 2px !important;
+}
+
+.inv-details {
+  min-width: 240px;
+}
+
+.inv-title {
+  color: var(--inv-navy);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-align: right;
+  line-height: 1;
+  margin-bottom: 10px !important;
+}
+
+.inv-details dl {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: end;
+  column-gap: 16px;
+  row-gap: 3px;
+}
+
+.inv-details dt {
+  color: var(--inv-muted);
+  text-align: right;
+}
+
+.inv-details dd {
+  font-weight: 700;
+  text-align: right;
+}
+
+/* Lines */
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inv-table th {
+  background: var(--inv-navy);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-align: left;
+  text-transform: uppercase;
+  padding: 8px 8px;
+}
+
+.inv-table th:first-child {
+  border-radius: 6px 0 0 6px;
+}
+.inv-table th:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.inv-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--inv-line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.inv-table tbody tr:nth-child(even) td {
+  background: var(--inv-soft);
+}
+
+.inv-table .c {
+  text-align: center;
+}
+.inv-table .r {
+  text-align: right;
+}
+.inv-table .upper {
+  text-transform: uppercase;
+}
+.inv-table .strong {
+  font-weight: 700;
+}
+.inv-table .muted {
+  color: var(--inv-muted);
+}
+.inv-table .nowrap {
+  white-space: nowrap;
+}
+.inv-table .mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Summary */
+.inv-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  margin-top: 18px;
+  break-inside: avoid;
+}
+
+.inv-words {
+  flex: 1;
+  max-width: 55%;
+  padding-top: 6px;
+}
+
+.inv-words-text {
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.inv-count {
+  color: var(--inv-muted);
+  margin-top: 6px !important;
+}
+
+.inv-totals {
+  width: 300px;
+  border: 1px solid var(--inv-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.inv-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--inv-line);
+}
+
+.inv-totals dt {
+  color: var(--inv-muted);
+}
+
+.inv-totals dd {
+  font-weight: 700;
+}
+
+.inv-totals .inv-grand {
+  background: var(--inv-navy);
+  border-bottom: 0;
+  padding: 10px 14px;
+}
+
+.inv-totals .inv-grand dt {
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inv-totals .inv-grand dd {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* Signatures + footer */
+.inv-sign {
+  display: flex;
+  justify-content: space-between;
+  gap: 80px;
+  margin: 56px 0 32px;
+  break-inside: avoid;
+}
+
+.inv-sign > div {
+  flex: 1;
+  max-width: 240px;
+}
+
+.inv-sign-name {
+  font-weight: 700;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+}
+
+.inv-sign-line {
+  border-top: 1.5px solid var(--inv-ink);
+  padding-top: 4px !important;
+  color: var(--inv-muted);
+  font-size: 10.5px;
+}
+
+.inv-foot {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--inv-line);
+  color: var(--inv-muted);
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.inv-foot p:first-child {
+  color: var(--inv-navy);
+  font-weight: 700;
+}

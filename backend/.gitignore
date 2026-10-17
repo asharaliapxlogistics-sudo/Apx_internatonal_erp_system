@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.env
+first-admin-login.txt
+demo-customer-login.txt
+.pytest_cache/

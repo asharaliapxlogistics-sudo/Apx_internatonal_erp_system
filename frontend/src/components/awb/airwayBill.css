@@ -1,0 +1,302 @@
+/* Air Waybill print layout. Designed for A4 landscape, two copies per page. */
+
+.awb-sheet {
+  --awb-navy: #1b1f6b;
+  --awb-red: #d7262e;
+  --awb-line: #d7dae3;
+  --awb-soft: #f3f5f9;
+  --awb-muted: #7a8194;
+  position: relative;
+  width: 100%;
+  color: #101330;
+  font-family: Inter, Arial, Helvetica, sans-serif;
+  padding-bottom: 12px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.awb {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--awb-line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.awb-label {
+  display: block;
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--awb-muted);
+  margin-bottom: 1px;
+  white-space: nowrap;
+}
+
+.awb-value {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+/* ---- navy side panel ---- */
+
+.awb-side {
+  flex: 0 0 19%;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 10px;
+  background: var(--awb-navy);
+  color: #fff;
+}
+
+.awb-side .awb-label {
+  color: #aab0d6;
+}
+
+.awb-brand img {
+  height: 42px;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left;
+}
+
+.awb-number {
+  background: #fff;
+  color: #101330;
+  border-radius: 6px;
+  padding: 5px 8px 4px;
+  text-align: center;
+}
+
+.awb-title {
+  margin: 0 0 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.awb-barcode {
+  height: 30px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.awb-digits {
+  margin: 2px 0 0;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.awb-side-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+}
+
+.awb-route {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 6px;
+}
+
+.awb-place .awb-value {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.awb-route-icon {
+  display: block;
+  margin: 1px 0;
+  font-size: 9px;
+  color: #aab0d6;
+}
+
+.awb-qr {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  color: var(--awb-navy);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.awb-qr svg {
+  flex: none;
+}
+
+/* ---- shipment details ---- */
+
+.awb-main {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+}
+
+.awb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--awb-navy);
+}
+
+.awb-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--awb-navy);
+}
+
+.awb-copy {
+  background: var(--awb-red);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.awb-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.awb-party {
+  background: var(--awb-soft);
+  border-top: 2px solid var(--awb-navy);
+  border-radius: 6px;
+  padding: 6px 10px 7px;
+}
+
+.awb-party h3,
+.awb-section {
+  margin: 0 0 5px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: var(--awb-navy);
+}
+
+.awb-party-red {
+  border-top-color: var(--awb-red);
+}
+
+.awb-party-red h3 {
+  color: var(--awb-red);
+}
+
+.awb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 12px;
+}
+
+.awb-span {
+  grid-column: 1 / -1;
+}
+
+.awb-name .awb-value {
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.awb-section {
+  margin-top: 8px;
+}
+
+.awb-package {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.awb-box {
+  border: 1px solid var(--awb-line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  min-width: 0;
+}
+
+.awb-box-dark {
+  background: var(--awb-navy);
+  border-color: var(--awb-navy);
+  color: #fff;
+}
+
+.awb-box-dark .awb-label {
+  color: #c4c8ea;
+}
+
+.awb-details {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  margin-top: 5px;
+}
+
+.awb-details .awb-box:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.awb-details .awb-box:last-child {
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.awb-note {
+  margin: 6px 0 0;
+  padding: 4px 8px;
+  border: 1px dashed #e7a3a6;
+  border-radius: 4px;
+  background: #fdf3f3;
+  color: #9a1218;
+  font-size: 8.5px;
+  font-weight: 600;
+}
+
+.awb-cut {
+  margin-top: 12px;
+  border-top: 1px dashed #9aa0b0;
+}
+
+.awb-void {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 110px;
+  font-weight: 800;
+  color: rgba(220, 0, 0, 0.18);
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+/* Page size is set by the AWB view page (see AwbView), so other prints aren't affected. */
+@media print {
+  /* zoom keeps the full width but makes each copy short enough for two per A4 landscape page */
+  .awb-sheet {
+    zoom: 0.84;
+    break-inside: avoid;
+    padding-bottom: 4mm;
+  }
+  .awb-cut {
+    margin-top: 4mm;
+  }
+}
