@@ -36,6 +36,33 @@ export function formatDimensions(pieces) {
 
 export const kg = (n) => `${Number(n || 0).toFixed(3)} KG`
 
+// Customs invoice printed with the AWB. Keep INVOICE_TYPES in step with backend/app/schemas/awb.py.
+export const INVOICE_TYPES = ['Gift', 'Commercial', 'Sample', 'Personal effects']
+export const UNITS = ['Piece(s)', 'Pair(s)', 'Set(s)', 'Dozen', 'KG']
+export const emptyItem = { description: '', hsCode: '', unit: 'Piece(s)', quantity: '', unitPrice: '' }
+
+export const itemTotal = (i) => (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0)
+export const itemsTotal = (items) => items.reduce((sum, i) => sum + itemTotal(i), 0)
+
+// Rows left completely empty are dropped; anything typed is sent and checked by the server.
+const filledItems = (items) =>
+  items
+    .filter((i) => i.description.trim() || i.hsCode.trim() || i.quantity !== '' || i.unitPrice !== '')
+    .map((i) => ({ ...i, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) }))
+
+// Problems in the item rows, keyed `item.<n>`, for the forms.
+export function itemErrors(items) {
+  const errors = {}
+  items.forEach((i, n) => {
+    const touched = i.description.trim() || i.hsCode.trim() || i.quantity !== '' || i.unitPrice !== ''
+    if (!touched) return
+    if (!i.description.trim()) errors[`item.${n}`] = `Item ${n + 1}: enter the description.`
+    else if (!(Number(i.quantity) > 0)) errors[`item.${n}`] = `Item ${n + 1}: quantity must be more than 0.`
+    else if (i.unitPrice === '' || !(Number(i.unitPrice) >= 0)) errors[`item.${n}`] = `Item ${n + 1}: enter the unit price (USD).`
+  })
+  return errors
+}
+
 // Empty form inputs become null; numbers typed as text become numbers.
 const numOrNull = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
 
@@ -54,9 +81,14 @@ export function createAwb(data) {
       actualWeight: Number(data.actualWeight),
       declaredValue: numOrNull(data.declaredValue),
       pieces: data.pieces.map((p) => ({ length: numOrNull(p.length), width: numOrNull(p.width), height: numOrNull(p.height) })),
+      items: filledItems(data.items ?? []),
     },
   })
 }
+
+// Replaces the customs invoice type and items; with items, the declared value becomes their total.
+export const setCustoms = (number, { invoiceType, items }) =>
+  api(`/awbs/${encodeURIComponent(number)}/customs`, { method: 'PUT', body: { invoiceType, items: filledItems(items) } })
 
 export const voidAwb = (number, reason) => api(`/awbs/${encodeURIComponent(number)}/void`, { method: 'POST', body: { reason } })
 

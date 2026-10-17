@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Ban, MapPin, Plus, Printer, RotateCcw, Trash2 } from 'lucide-react'
+import { ArrowLeft, Ban, FileText, MapPin, Plus, Printer, RotateCcw, Trash2 } from 'lucide-react'
 import AirwayBill from '../../../components/awb/AirwayBill'
 import LoadState from '../../../components/LoadState'
 import { useDialog } from '../../../context/Dialog'
@@ -116,6 +116,12 @@ export default function AwbView() {
               <MapPin size={16} /> Track
             </Link>
           )}
+          <Link
+            to={`/admin/awb/${awb.number}/invoice`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
+          >
+            <FileText size={16} /> Customs invoice
+          </Link>
           {awb.status !== 'Void' && (
             <button
               onClick={handleVoid}

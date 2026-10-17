@@ -52,10 +52,16 @@ class Awb(Timestamps, Base):
     carrier: Mapped[str] = mapped_column(String(40), default="")
     carrier_tracking: Mapped[str] = mapped_column(String(255), default="", index=True)
 
+    # Customs invoice printed with the AWB: its heading (Gift / Commercial / ...) and item lines.
+    invoice_type: Mapped[str] = mapped_column(String(20), default="Gift")
+
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     pieces: Mapped[list["AwbPiece"]] = relationship(
         back_populates="awb", cascade="all, delete-orphan", order_by="AwbPiece.position"
+    )
+    items: Mapped[list["AwbItem"]] = relationship(
+        back_populates="awb", cascade="all, delete-orphan", order_by="AwbItem.position", lazy="selectin"
     )
     events: Mapped[list["TrackingEvent"]] = relationship(
         back_populates="awb", cascade="all, delete-orphan", order_by="(TrackingEvent.at, TrackingEvent.created_at)"
@@ -73,6 +79,23 @@ class AwbPiece(Base):
     height: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
 
     awb: Mapped[Awb] = relationship(back_populates="pieces")
+
+
+class AwbItem(Base):
+    """One line of the customs invoice: what is inside, its HS code and value (USD)."""
+
+    __tablename__ = "awb_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    awb_number: Mapped[str] = mapped_column(ForeignKey("awbs.number", ondelete="CASCADE"), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(String(190))
+    hs_code: Mapped[str] = mapped_column(String(20), default="")
+    unit: Mapped[str] = mapped_column(String(20), default="Piece(s)")
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))  # USD
+
+    awb: Mapped[Awb] = relationship(back_populates="items")
 
 
 class TrackingEvent(UUIDPk, Base):

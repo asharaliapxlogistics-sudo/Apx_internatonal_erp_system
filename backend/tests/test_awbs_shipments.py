@@ -141,3 +141,29 @@ def test_awb_field_checks(client, staff):
     assert status(consignee={"email": "nope"}) == 422
     assert status(actualWeight=0) == 422
     assert status(pieces=[{"length": 40, "width": None, "height": 20}]) == 422  # half-filled box
+
+
+def test_customs_invoice_items(client, staff):
+    # Without items the AWB keeps its own declared value and is a Gift invoice.
+    a = new_awb(client, staff)
+    assert (a["invoiceType"], a["items"], a["declaredValue"]) == ("Gift", [], 30.0)
+
+    # With items the declared value is their total.
+    items = [
+        {"description": " MENS SWEATER ", "hsCode": "6110309100", "quantity": 30, "unitPrice": 2.5},
+        {"description": "SCARF", "unit": "", "quantity": 2, "unitPrice": 4.25},
+    ]
+    b = new_awb(client, staff, invoiceType="Commercial", items=items)
+    assert b["invoiceType"] == "Commercial" and b["declaredValue"] == 83.5
+    assert b["items"][0] == {"description": "MENS SWEATER", "hsCode": "6110309100", "unit": "Piece(s)", "quantity": 30.0, "unitPrice": 2.5}
+    assert b["items"][1]["unit"] == "Piece(s)"
+
+    # Items can be filled in after the AWB is saved, and replaced.
+    c = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Sample", "items": items[:1]}).json()
+    assert (c["invoiceType"], len(c["items"]), c["declaredValue"]) == ("Sample", 1, 75.0)
+    assert client.get(f"/api/awbs/{a['number']}", headers=staff).json()["items"][0]["hsCode"] == "6110309100"
+
+    bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Free", "items": []})
+    assert bad.status_code == 422
+    bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"items": [{"description": "X", "quantity": 0, "unitPrice": 1}]})
+    assert bad.status_code == 422

@@ -1,4 +1,7 @@
-from pydantic import Field, model_validator
+from decimal import Decimal
+from typing import Annotated
+
+from pydantic import Field, PlainSerializer, model_validator
 
 from app.schemas.common import CamelModel, Dimension, Money, UtcDateTime, Weight
 from app.schemas.validators import NtnOrCnic, OptionalEmail, is_pakistan, letters, phone_for, pk_postal
@@ -39,7 +42,38 @@ class Piece(CamelModel):
     height: Dimension | None = None
 
 
-class AwbBase(CamelModel):
+INVOICE_TYPES = ("Gift", "Commercial", "Sample", "Personal effects")
+
+Quantity = Annotated[Decimal, Field(gt=0, max_digits=10, decimal_places=2), PlainSerializer(float, return_type=float)]
+
+
+class Item(CamelModel):
+    """One customs invoice line (prices in USD)."""
+
+    description: str = Field(min_length=1, max_length=190)
+    hs_code: str = Field(default="", max_length=20)
+    unit: str = Field(default="Piece(s)", max_length=20)
+    quantity: Quantity
+    unit_price: Money
+
+
+class Customs(CamelModel):
+    invoice_type: str = "Gift"
+    items: list[Item] = Field(default=[], max_length=50)
+
+    @model_validator(mode="after")
+    def check_customs(self):
+        if self.invoice_type not in INVOICE_TYPES:
+            raise ValueError(f"Invoice type must be one of: {', '.join(INVOICE_TYPES)}")
+        for i in self.items:
+            i.description, i.hs_code, i.unit = i.description.strip(), i.hs_code.strip(), i.unit.strip() or "Piece(s)"
+        return self
+
+    def total(self) -> Decimal:
+        return sum((i.quantity * i.unit_price for i in self.items), Decimal(0)).quantize(Decimal("0.01"))
+
+
+class AwbBase(Customs):
     customer_id: str | None = None
     account_no: str = Field(default="", max_length=20)
     service: str = Field(min_length=1, max_length=60)
@@ -118,6 +152,11 @@ def awb_out(awb) -> AwbOut:
         carrier=awb.carrier,
         carrier_tracking=awb.carrier_tracking,
         created_at=awb.created_at,
+        invoice_type=awb.invoice_type,
+        items=[
+            Item(description=i.description, hs_code=i.hs_code, unit=i.unit, quantity=i.quantity, unit_price=i.unit_price)
+            for i in awb.items
+        ],
     )
 
 

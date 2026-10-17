@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPinned, Plus, Trash2 } from 'lucide-react'
 import Combobox from '../../../components/Combobox'
+import CustomsItems from '../../../components/awb/CustomsItems'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
 import { parseAddressLine } from '../../../lib/addressLine'
-import { COUNTRIES, SERVICES, calcWeights, createAwb, kg, pieceVolumetric } from '../../../lib/awb'
+import { COUNTRIES, SERVICES, calcWeights, createAwb, emptyItem, itemErrors, itemsTotal, kg, pieceVolumetric } from '../../../lib/awb'
 import {
   INTL_PHONE_HINT,
   PK_PHONE_HINT,
@@ -67,7 +68,7 @@ function partyErrors(prefix, p, isShipper) {
   }
 }
 
-function check({ shipper, consignee, form, pieces }) {
+function check({ shipper, consignee, form, pieces, items }) {
   const pieceErrors = {}
   pieces.forEach((p, i) => {
     const dims = [p.length, p.width, p.height]
@@ -84,6 +85,7 @@ function check({ shipper, consignee, form, pieces }) {
     declaredValue: form.declaredValue !== '' && !(Number(form.declaredValue) >= 0) ? 'Declared value cannot be negative.' : '',
     productDetail: form.productDetail.trim() ? '' : 'Enter the product detail.',
     ...pieceErrors,
+    ...itemErrors(items),
   })
 }
 
@@ -181,6 +183,10 @@ export default function AwbForm() {
     return { ...emptyParty, ...parsed, address: (parsed.address || fromAddress.address).slice(0, 255) }
   })
   const [pieces, setPieces] = useState([{ ...emptyPiece }])
+  const [items, setItems] = useState([{ ...emptyItem }])
+  const [invoiceType, setInvoiceType] = useState('Gift')
+  // Once items have prices, the declared value is their total (the server does the same).
+  const itemsValue = itemsTotal(items)
   const [form, setForm] = useState({
     accountNo: initialCustomer?.accountNo ?? '',
     bagNumber: '',
@@ -205,7 +211,7 @@ export default function AwbForm() {
   }, [customers])
 
   // Shown after the first save attempt, then updated as the user types.
-  const errors = tried ? check({ shipper, consignee, form, pieces }) : {}
+  const errors = tried ? check({ shipper, consignee, form, pieces, items }) : {}
   const cls = (key) => `${inputCls} ${errors[key] ? errCls : ''}`
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
@@ -228,14 +234,14 @@ export default function AwbForm() {
     e.preventDefault()
     setError('')
     setTried(true)
-    const found = check({ shipper, consignee, form, pieces })
+    const found = check({ shipper, consignee, form, pieces, items })
     if (Object.keys(found).length) {
       setTimeout(() => focusFirstError(found))
       return
     }
     setSaving(true)
     try {
-      const awb = await createAwb({ ...form, customerId: customerId || null, shipper, consignee, pieces })
+      const awb = await createAwb({ ...form, customerId: customerId || null, shipper, consignee, pieces, items, invoiceType })
       navigate(`/admin/awb/${awb.number}`)
     } catch (err) {
       setError(err.message)
@@ -378,15 +384,16 @@ export default function AwbForm() {
               required
             />
           </Field>
-          <Field label="Declared value (USD)" error={errors.declaredValue}>
+          <Field label="Declared value (USD)" error={errors.declaredValue} hint={itemsValue > 0 ? 'Total of the customs items below' : undefined}>
             <input
               data-field="declaredValue"
               className={cls('declaredValue')}
               type="number"
               min="0"
               step="0.01"
-              value={form.declaredValue}
+              value={itemsValue > 0 ? itemsValue.toFixed(2) : form.declaredValue}
               onChange={set('declaredValue')}
+              readOnly={itemsValue > 0}
             />
           </Field>
           <div className="rounded-xl bg-slate-50 px-4 py-2.5 sm:col-span-2">
@@ -420,6 +427,13 @@ export default function AwbForm() {
           <input type="checkbox" checked={form.fragile} onChange={set('fragile')} className="h-4 w-4 accent-accent-500" />
           Fragile
         </label>
+      </Card>
+
+      <Card title="Customs invoice items">
+        <p className="-mt-2 mb-4 text-xs text-slate-500">
+          Printed on the customs invoice that goes with the AWB. You can also fill these in later from the AWB page.
+        </p>
+        <CustomsItems invoiceType={invoiceType} onInvoiceTypeChange={setInvoiceType} items={items} onItemsChange={setItems} errors={errors} />
       </Card>
 
       {(error || errorCount > 0) && (

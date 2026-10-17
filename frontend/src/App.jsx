@@ -4,6 +4,7 @@ import AdminLayout from './layouts/AdminLayout'
 import { getSession } from './lib/auth'
 import Login from './pages/Login'
 import AwbForm from './pages/admin/awb/AwbForm'
+import AwbInvoice from './pages/admin/awb/AwbInvoice'
 import AwbList from './pages/admin/awb/AwbList'
 import AwbView from './pages/admin/awb/AwbView'
 import InvoiceForm from './pages/admin/billing/InvoiceForm'
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="awb" element={<AwbList />} />
         <Route path="awb/new" element={<AwbForm />} />
         <Route path="awb/:number" element={<AwbView />} />
+        <Route path="awb/:number/invoice" element={<AwbInvoice />} />
         <Route path="billing" element={<InvoiceList />} />
         <Route path="billing/new" element={<InvoiceForm />} />
         <Route path="billing/:id" element={<InvoiceView />} />
