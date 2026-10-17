@@ -5,7 +5,7 @@ import CustomsInvoice from '../../../components/awb/CustomsInvoice'
 import CustomsItems from '../../../components/awb/CustomsItems'
 import LoadState from '../../../components/LoadState'
 import { useApi } from '../../../hooks/useApi'
-import { emptyItem, getAwb, itemErrors, setCustoms } from '../../../lib/awb'
+import { INVOICE_TYPES, emptyItem, getAwb, itemErrors, setCustoms } from '../../../lib/awb'
 import { focusFirstError } from '../../../lib/validation'
 
 const toForm = (items) =>
@@ -67,8 +67,20 @@ export default function AwbInvoice() {
   const { number } = useParams()
   const { data: awb, error, reload, setData } = useApi(() => getAwb(number), [number])
   const [editing, setEditing] = useState(false)
+  const [typeState, setTypeState] = useState('') // '' | saving | error
 
   if (!awb) return <LoadState error={error} onRetry={reload} />
+
+  // Gift or Commercial: saved straight away, the items stay as they are.
+  async function changeType(e) {
+    setTypeState('saving')
+    try {
+      setData(await setCustoms(awb.number, { invoiceType: e.target.value, items: awb.items }))
+      setTypeState('')
+    } catch {
+      setTypeState('error')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -83,7 +95,23 @@ export default function AwbInvoice() {
             <p className="mt-1 text-sm text-slate-500">No items yet, so it shows the product detail and declared value. Add items for HS codes and quantities.</p>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+            {typeState === 'saving' ? 'Saving…' : typeState === 'error' ? <span className="text-accent-600">Not saved</span> : 'Invoice'}
+            <select
+              value={awb.invoiceType || 'Gift'}
+              onChange={changeType}
+              disabled={typeState === 'saving' || editing}
+              aria-label="Invoice type"
+              className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-ink-900 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none disabled:opacity-60"
+            >
+              {INVOICE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t} invoice
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             onClick={() => setEditing((v) => !v)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"

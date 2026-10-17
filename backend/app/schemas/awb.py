@@ -42,7 +42,7 @@ class Piece(CamelModel):
     height: Dimension | None = None
 
 
-INVOICE_TYPES = ("Gift", "Commercial", "Sample", "Personal effects")
+INVOICE_TYPES = ("Gift", "Commercial")
 
 Quantity = Annotated[Decimal, Field(gt=0, max_digits=10, decimal_places=2), PlainSerializer(float, return_type=float)]
 

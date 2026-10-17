@@ -159,11 +159,14 @@ def test_customs_invoice_items(client, staff):
     assert b["items"][1]["unit"] == "Piece(s)"
 
     # Items can be filled in after the AWB is saved, and replaced.
-    c = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Sample", "items": items[:1]}).json()
-    assert (c["invoiceType"], len(c["items"]), c["declaredValue"]) == ("Sample", 1, 75.0)
+    c = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Gift", "items": items[:1]}).json()
+    assert (c["invoiceType"], len(c["items"]), c["declaredValue"]) == ("Gift", 1, 75.0)
     assert client.get(f"/api/awbs/{a['number']}", headers=staff).json()["items"][0]["hsCode"] == "6110309100"
+    # Switching Gift / Commercial keeps the items.
+    d = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Commercial", "items": c["items"]}).json()
+    assert (d["invoiceType"], len(d["items"]), d["declaredValue"]) == ("Commercial", 1, 75.0)
 
-    bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Free", "items": []})
+    bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Sample", "items": []})
     assert bad.status_code == 422
     bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"items": [{"description": "X", "quantity": 0, "unitPrice": 1}]})
     assert bad.status_code == 422

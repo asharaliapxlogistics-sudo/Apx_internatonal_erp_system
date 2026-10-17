@@ -63,7 +63,7 @@ export function formatDimensions(pieces) {
 export const kg = (n) => `${Number(n || 0).toFixed(3)} KG`
 
 // Customs invoice printed with the AWB. Keep INVOICE_TYPES in step with backend/app/schemas/awb.py.
-export const INVOICE_TYPES = ['Gift', 'Commercial', 'Sample', 'Personal effects']
+export const INVOICE_TYPES = ['Gift', 'Commercial']
 export const UNITS = ['Piece(s)', 'Pair(s)', 'Set(s)', 'Dozen', 'KG']
 export const emptyItem = { description: '', hsCode: '', unit: 'Piece(s)', quantity: '', unitPrice: '' }
 
