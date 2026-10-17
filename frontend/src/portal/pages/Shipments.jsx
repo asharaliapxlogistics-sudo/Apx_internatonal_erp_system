@@ -12,15 +12,15 @@ export const publicTrackingLink = (number) => `${window.location.origin}/track?n
 // The delivery partner's own number (e.g. DPD), once APX staff enter it, with a link to the partner's tracking.
 export function CarrierLine({ shipment }) {
   if (!shipment.carrierTracking) return null
-  const href = carrierLink(shipment.carrier, shipment.carrierTracking)
+  const site = carrierLink(shipment.carrier, shipment.carrierTracking, shipment.service)
   return (
     <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-slate-600">
       <span>
         {shipment.carrier || 'Carrier'} tracking: <span className="font-mono font-semibold text-ink-900">{shipment.carrierTracking}</span>
       </span>
-      {href && (
-        <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-500 hover:text-accent-500">
-          Track on {shipment.carrier} <ExternalLink size={14} />
+      {site && (
+        <a href={site.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-500 hover:text-accent-500">
+          Track on {site.name} <ExternalLink size={14} />
         </a>
       )}
     </p>

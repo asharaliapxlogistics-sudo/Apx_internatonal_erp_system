@@ -41,18 +41,22 @@ export function carrierFor(shipment) {
   return CARRIERS.find((c) => words.includes(` ${c.toLowerCase()} `)) ?? ''
 }
 
-// The carrier's own tracking page for a number, where we know it.
-const CARRIER_LINKS = {
-  dpd: (n) => `https://track.dpd.co.uk/search?reference=${n}`,
-  dhl: (n) => `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`,
-  fedex: (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`,
-  ups: (n) => `https://www.ups.com/track?tracknum=${n}`,
-  'royal mail': (n) => `https://www.royalmail.com/track-your-item#/tracking-results/${n}`,
-  aramex: (n) => `https://www.aramex.com/track/results?ShipmentNumber=${n}`,
+// The carrier's own tracking page for a number, where we know it, as { name, url }.
+// DPD has one site per country, picked from the service ("DPD DUTY PAID GERMANY" → DPD Germany, otherwise DPD UK).
+const CARRIER_SITES = {
+  dpd: ['DPD UK', (n) => `https://track.dpd.co.uk/search?reference=${n}`],
+  'dpd germany': ['DPD Germany', (n) => `https://tracking.dpd.de/status/en_US/parcel/${n}`],
+  dhl: ['DHL', (n) => `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`],
+  fedex: ['FedEx', (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`],
+  ups: ['UPS', (n) => `https://www.ups.com/track?tracknum=${n}`],
+  'royal mail': ['Royal Mail', (n) => `https://www.royalmail.com/track-your-item#/tracking-results/${n}`],
+  aramex: ['Aramex', (n) => `https://www.aramex.com/track/results?ShipmentNumber=${n}`],
 }
-export function carrierLink(carrier, number) {
-  const link = CARRIER_LINKS[(carrier || '').trim().toLowerCase()]
-  return link && number ? link(encodeURIComponent(number.trim())) : ''
+export function carrierLink(carrier, number, service = '') {
+  let key = (carrier || '').trim().toLowerCase()
+  if (key === 'dpd' && /\bgermany\b/i.test(service || '')) key = 'dpd germany'
+  const site = CARRIER_SITES[key]
+  return site && number ? { name: site[0], url: site[1](encodeURIComponent(number.trim())) } : null
 }
 
 // Local date-time as YYYY-MM-DDTHH:mm (the value format of <input type="datetime-local">).
