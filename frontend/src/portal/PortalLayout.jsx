@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ClipboardList,
   FileText,
+  Globe2,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 import { getSession, logout } from '../lib/auth'
 import LoadState from '../components/LoadState'
+import { WEBSITE_LABEL, WEBSITE_URL } from '../config/site'
 import { PortalAccountProvider, usePortalAccount } from './PortalAccount'
 
 export const PORTAL_NAV = [
@@ -83,6 +85,16 @@ function AccountMenu({ session }) {
               <Icon size={16} className="text-slate-500" /> {label}
             </Link>
           ))}
+          <a
+            href={WEBSITE_URL}
+            target="_blank"
+            rel="noreferrer"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="mt-0.5 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-900 hover:bg-slate-100"
+          >
+            <Globe2 size={16} className="text-slate-500" /> APX website
+          </a>
           <button
             role="menuitem"
             onClick={() => {
@@ -176,7 +188,10 @@ function PortalShell() {
       </main>
 
       <footer className="no-print mx-auto max-w-7xl px-4 pb-8 text-xs text-slate-400 sm:px-6">
-        <FileText size={12} className="mr-1 inline" /> APX International · Need help? Call 0345-3177311
+        <FileText size={12} className="mr-1 inline" /> APX International · Need help? Call 0345-3177311 ·{' '}
+        <a href={WEBSITE_URL} target="_blank" rel="noreferrer" className="font-semibold hover:text-brand-500">
+          {WEBSITE_LABEL}
+        </a>
       </footer>
     </div>
   )

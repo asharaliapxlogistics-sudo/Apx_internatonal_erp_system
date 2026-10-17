@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Building2, ChevronDown, KeyRound, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { Building2, ChevronDown, Globe2, KeyRound, LogOut, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import ChangePasswordDialog from '../components/ChangePasswordDialog'
 import { allModules, moduleGroups } from '../config/adminModules'
+import { WEBSITE_URL } from '../config/site'
 import { AppSettingsProvider } from '../context/AppSettings'
 import { CustomerFilterProvider, useCustomerFilter } from '../context/CustomerFilter'
 import { getSession, logout } from '../lib/auth'
@@ -150,6 +151,17 @@ function UserMenu() {
             <KeyRound size={16} />
             Change password
           </button>
+          <a
+            href={WEBSITE_URL}
+            target="_blank"
+            rel="noreferrer"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink-900 hover:bg-slate-100"
+          >
+            <Globe2 size={16} />
+            APX website
+          </a>
           <button
             role="menuitem"
             onClick={handleLogout}

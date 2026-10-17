@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Eye, EyeOff, Globe2, Lock, Mail, PackageCheck, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Globe2, Lock, Mail, PackageCheck, ShieldCheck } from 'lucide-react'
+import { WEBSITE_LABEL, WEBSITE_URL } from '../config/site'
 import { getSession, login } from '../lib/auth'
 
 const highlights = [
@@ -75,7 +76,9 @@ export default function Login({ portal = false }) {
         <div className="absolute -right-24 -bottom-32 h-96 w-96 rounded-full bg-accent-500/25 blur-3xl" />
 
         <div className="relative flex flex-1 flex-col justify-between p-12 xl:p-16">
-          <img src="/apx-logo-light.svg" alt="APX International" className="h-10 w-fit" />
+          <a href={WEBSITE_URL} className="w-fit">
+            <img src="/apx-logo-light.svg" alt="APX International" className="h-10" />
+          </a>
 
           <div className="max-w-md">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold tracking-wide text-slate-200 uppercase">
@@ -106,9 +109,19 @@ export default function Login({ portal = false }) {
       {/* Form panel */}
       <section className="flex items-center justify-center px-6 py-12 sm:px-10">
         <div className="w-full max-w-sm">
-          <img src="/apx-logo.svg" alt="APX International" className="h-10 lg:hidden" />
+          <a href={WEBSITE_URL} className="block w-fit lg:hidden">
+            <img src="/apx-logo.svg" alt="APX International" className="h-10" />
+          </a>
 
-          <p className="mt-8 text-sm font-semibold text-accent-500 lg:mt-0">{text.kicker}</p>
+          <a
+            href={WEBSITE_URL}
+            className="group mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand-500 lg:mt-0"
+          >
+            <ArrowLeft size={14} className="transition group-hover:-translate-x-0.5" />
+            Back to {WEBSITE_LABEL}
+          </a>
+
+          <p className="mt-6 text-sm font-semibold text-accent-500">{text.kicker}</p>
           <h1 className="mt-1 text-3xl font-extrabold text-ink-900">Welcome back</h1>
           <p className="mt-2 text-sm text-slate-500">{text.intro}</p>
 
