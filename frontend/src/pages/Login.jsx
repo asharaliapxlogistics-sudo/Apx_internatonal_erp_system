@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Globe2, Lock, PackageCheck, ShieldCheck, UserRound } from 'lucide-react'
-import { WEBSITE_LABEL, WEBSITE_URL } from '../config/site'
+import { WEBSITE_URL } from '../config/site'
 import { getSession, login } from '../lib/auth'
 
 const highlights = [
@@ -118,7 +118,7 @@ export default function Login({ portal = false }) {
             className="group mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand-500 lg:mt-0"
           >
             <ArrowLeft size={14} className="transition group-hover:-translate-x-0.5" />
-            Back to {WEBSITE_LABEL}
+            Back to website
           </a>
 
           <p className="mt-6 text-sm font-semibold text-accent-500">{text.kicker}</p>
