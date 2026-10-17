@@ -43,7 +43,7 @@ export function carrierFor(shipment) {
 
 // The carrier's own tracking page for a number, where we know it.
 const CARRIER_LINKS = {
-  dpd: (n) => `https://www.dpd.co.uk/apps/tracking/?reference=${n}`,
+  dpd: (n) => `https://track.dpd.co.uk/search?reference=${n}`,
   dhl: (n) => `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`,
   fedex: (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`,
   ups: (n) => `https://www.ups.com/track?tracknum=${n}`,
