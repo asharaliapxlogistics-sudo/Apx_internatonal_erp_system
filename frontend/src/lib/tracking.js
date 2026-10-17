@@ -30,7 +30,7 @@ export const STATUS_GROUPS = [
 const byName = Object.fromEntries(STATUSES.map((s) => [s.name, s]))
 export const statusInfo = (name) => byName[name] ?? STATUSES[0]
 
-export const CARRIERS = ['DPD', 'DHL', 'FedEx', 'UPS', 'Royal Mail', 'Aramex', 'TCS']
+export const CARRIERS = ['DPD', 'DHL', 'FedEx', 'UPS', 'Royal Mail', 'Aramex', 'Skynet', 'USPS', 'TCS']
 
 // The delivery partner a shipment's service goes with (e.g. "DIRECT UK DPD" → DPD), until staff pick one.
 // Services that name no partner (e.g. "DIRECT DUBAI") give ''.
@@ -46,6 +46,8 @@ export function carrierFor(shipment) {
 const CARRIER_SITES = {
   dpd: ['DPD UK', (n) => `https://track.dpd.co.uk/search?reference=${n}`],
   'dpd germany': ['DPD Germany', (n) => `https://tracking.dpd.de/status/en_US/parcel/${n}`],
+  skynet: ['Skynet', (n) => `https://www.snwwe.com/pk-en/track-shipment?AWB=${n}`],
+  usps: ['USPS', (n) => `https://tools.usps.com/tracking/${n}`],
   dhl: ['DHL', (n) => `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`],
   fedex: ['FedEx', (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`],
   ups: ['UPS', (n) => `https://www.ups.com/track?tracknum=${n}`],
