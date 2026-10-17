@@ -5,7 +5,7 @@ import LoadState from '../../components/LoadState'
 import { usePortalShipments } from '../data'
 import { usePortalAccount } from '../PortalAccount'
 import { Card, PageHeader, PreviewNote, ProgressSteps, StatusBadge, Timeline, btnPrimary, inputCls, shortDay } from '../ui'
-import { CopyLinkButton } from './Shipments'
+import { CarrierLine, CopyLinkButton } from './Shipments'
 
 const parse = (text) => [...new Set(text.split(/[\s,;]+/).map((n) => n.trim()).filter(Boolean))].slice(0, 25)
 
@@ -32,6 +32,7 @@ export function TrackResult({ number, shipment, showShare }) {
           <p className="text-sm text-slate-500">
             To {s.city}, {s.country} · booked {shortDay(s.date)} · {s.service}
           </p>
+          <CarrierLine shipment={s} />
         </div>
         {showShare && <CopyLinkButton number={s.number} />}
       </div>
@@ -82,7 +83,7 @@ export default function Track() {
       {numbers.length > 0 && shipments && (
         <div className="space-y-4">
           {numbers.map((n) => (
-            <TrackResult key={n} number={n} shipment={shipments.find((s) => s.number === n)} showShare />
+            <TrackResult key={n} number={n} shipment={shipments.find((s) => s.number === n || s.carrierTracking === n)} showShare />
           ))}
         </div>
       )}

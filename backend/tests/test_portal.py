@@ -139,8 +139,15 @@ def test_public_tracking_needs_no_login_and_hides_details(client, admin):
     body = res.json()
     assert (body["status"], body["city"], body["country"]) == ("Booked", "London", "United Kingdom")
     assert not {"consignee", "weight", "contents", "reference"} & body.keys()
+    assert (body["carrier"], body["carrierTracking"]) == ("", "")
+    # Once staff enter the DPD number it shows on tracking, and the DPD number finds the shipment too.
+    client.put(f"/api/shipments/{a['number']}/carrier", headers=admin, json={"carrier": "DPD", "carrierTracking": "15503801001528B"})
+    body = client.get(f"/api/track/{a['number']}").json()
+    assert (body["carrier"], body["carrierTracking"]) == ("DPD", "15503801001528B")
+    assert client.get("/api/track/15503801001528B").json()["number"] == a["number"]
     client.post(f"/api/awbs/{a['number']}/void", headers=admin, json={"reason": "x"})
     assert client.get(f"/api/track/{a['number']}").status_code == 404
+    assert client.get("/api/track/15503801001528B").status_code == 404
     assert client.get("/api/track/nope").status_code == 404
 
 

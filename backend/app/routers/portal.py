@@ -73,6 +73,8 @@ class PublicShipment(CamelModel):
     city: str
     country: str
     service: str
+    carrier: str  # delivery partner (e.g. DPD) and its own tracking number, once staff enter it
+    carrier_tracking: str
     status: str
     group: str
     events: list[TrackEvent]  # oldest first
@@ -107,6 +109,8 @@ def _public(awb: Awb) -> dict:
         city=awb.consignee_city,
         country=awb.consignee_country,
         service=awb.service,
+        carrier=awb.carrier if awb.carrier_tracking else "",
+        carrier_tracking=awb.carrier_tracking,
         status=last,
         group=group_of(last),
         events=[TrackEvent(**e) for e in events],
@@ -174,8 +178,17 @@ def portal_invoices(user: PortalUser, db: DbSession):
 
 @public.get("/{number}", response_model=PublicShipment)
 def public_track(number: str, db: DbSession):
-    awb = db.get(Awb, number.strip(), options=[selectinload(Awb.events)])
+    number = number.strip()
+    awb = db.get(Awb, number, options=[selectinload(Awb.events)])
     if not awb or awb.status == "Void":
+        # Customers may only have the delivery partner's number (e.g. from DPD's own messages).
+        awb = db.scalars(
+            select(Awb)
+            .where(Awb.carrier_tracking == number, Awb.carrier_tracking != "", Awb.status != "Void")
+            .options(selectinload(Awb.events))
+            .order_by(Awb.created_at.desc())
+        ).first()
+    if not awb:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No shipment found with this number.")
     return PublicShipment(**_public(awb))
 

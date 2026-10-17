@@ -7,7 +7,7 @@ import StatusUpdate, { StatusBadge } from '../../../components/tracking/StatusUp
 import { useDialog } from '../../../context/Dialog'
 import { useApi } from '../../../hooks/useApi'
 import { calcWeights, kg } from '../../../lib/awb'
-import { CARRIERS, deleteEvent, formatDateTime, getShipment, setCarrierTracking, statusInfo } from '../../../lib/tracking'
+import { CARRIERS, carrierFor, deleteEvent, formatDateTime, getShipment, setCarrierTracking, statusInfo } from '../../../lib/tracking'
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none'
@@ -35,11 +35,11 @@ function Party({ title, party }) {
 }
 
 function CarrierForm({ shipment, onSaved }) {
-  const [carrier, setCarrier] = useState(shipment.carrier || 'DPD')
+  const [carrier, setCarrier] = useState(carrierFor(shipment))
   const [carrierTracking, setTracking] = useState(shipment.carrierTracking)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const changed = carrier !== (shipment.carrier || 'DPD') || carrierTracking !== shipment.carrierTracking
+  const changed = carrier !== carrierFor(shipment) || carrierTracking !== shipment.carrierTracking
 
   async function handleSubmit(e) {
     e.preventDefault()

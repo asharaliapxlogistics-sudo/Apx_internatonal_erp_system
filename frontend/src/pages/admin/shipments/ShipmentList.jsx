@@ -5,7 +5,48 @@ import LoadState from '../../../components/LoadState'
 import StatusUpdate, { StatusBadge } from '../../../components/tracking/StatusUpdate'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
 import { useApi } from '../../../hooks/useApi'
-import { STATUS_GROUPS, formatDateTime, listShipments, statusInfo } from '../../../lib/tracking'
+import { STATUS_GROUPS, carrierFor, formatDateTime, listShipments, setCarrierTracking, statusInfo } from '../../../lib/tracking'
+
+// The delivery partner's number, typed straight into the list during the nightly update. Enter or leaving the box saves.
+function CarrierCell({ shipment, onSaved }) {
+  const [value, setValue] = useState(shipment.carrierTracking)
+  const [state, setState] = useState('') // '' | saving | saved | error
+  const carrier = carrierFor(shipment)
+
+  async function save() {
+    const next = value.trim()
+    if (next === shipment.carrierTracking) return setValue(next)
+    setState('saving')
+    try {
+      onSaved(await setCarrierTracking(shipment.awb.number, { carrier, carrierTracking: next }))
+      setState('saved')
+    } catch {
+      setState('error')
+    }
+  }
+
+  return (
+    <div className="w-44">
+      <input
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value)
+          setState('')
+        }}
+        onBlur={save}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        placeholder={`${carrier} no…`}
+        aria-label={`${carrier} number for AWB ${shipment.awb.number}`}
+        className={`w-full rounded-lg border px-2 py-1 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:outline-none ${
+          state === 'error' ? 'border-accent-500' : 'border-transparent bg-slate-50 hover:border-slate-300'
+        }`}
+      />
+      <p className={`mt-0.5 text-xs ${state === 'error' ? 'text-accent-600' : state === 'saved' ? 'text-emerald-600' : 'text-slate-500'}`}>
+        {state === 'saving' ? 'Saving…' : state === 'saved' ? `${carrier} · saved` : state === 'error' ? 'Not saved, try again' : carrier}
+      </p>
+    </div>
+  )
+}
 
 // Days since booking (until delivery for delivered shipments).
 function daysOpen(s) {
@@ -15,7 +56,8 @@ function daysOpen(s) {
 
 export default function ShipmentList() {
   const { customerId } = useCustomerFilter()
-  const { data, error, reload } = useApi(() => listShipments(), [])
+  const { data, error, reload, setData } = useApi(() => listShipments(), [])
+  const replace = (updated) => setData((list) => list.map((s) => (s.awb.number === updated.awb.number ? updated : s)))
   const [group, setGroup] = useState('open')
   const [query, setQuery] = useState('')
   const [showUpdate, setShowUpdate] = useState(false)
@@ -188,15 +230,8 @@ export default function ShipmentList() {
                     {s.awb.consignee.city}
                     <p className="text-xs text-slate-500">{s.awb.consignee.country}</p>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-slate-600">
-                    {s.carrierTracking ? (
-                      <>
-                        {s.carrierTracking}
-                        <p className="text-xs text-slate-500">{s.carrier}</p>
-                      </>
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
+                  <td className="px-3 py-2">
+                    <CarrierCell shipment={s} onSaved={replace} />
                   </td>
                   <td className="px-3 py-3">
                     <StatusBadge status={s.status} />

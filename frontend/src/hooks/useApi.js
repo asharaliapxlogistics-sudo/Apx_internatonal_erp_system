@@ -23,6 +23,7 @@ export function useApi(fetcher, deps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 
-  const setData = useCallback((data) => setState((s) => ({ ...s, data })), [])
+  // Accepts a value or an updater, like useState.
+  const setData = useCallback((data) => setState((s) => ({ ...s, data: typeof data === 'function' ? data(s.data) : data })), [])
   return { ...state, reload, setData }
 }

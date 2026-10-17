@@ -1,13 +1,31 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, Copy, MapPin, MessageSquareWarning, Package, Search, Share2 } from 'lucide-react'
+import { ArrowLeft, Check, Copy, ExternalLink, MapPin, MessageSquareWarning, Package, Search, Share2 } from 'lucide-react'
 import LoadState from '../../components/LoadState'
-import { STATUS_GROUPS, statusInfo } from '../../lib/tracking'
+import { STATUS_GROUPS, carrierLink, statusInfo } from '../../lib/tracking'
 import { usePortalShipment, usePortalShipments } from '../data'
 import { usePortalAccount } from '../PortalAccount'
 import { Card, Empty, PageHeader, PreviewNote, ProgressSteps, StatusBadge, Timeline, btnSecondary, inputCls, shortDay } from '../ui'
 
 export const publicTrackingLink = (number) => `${window.location.origin}/track?no=${encodeURIComponent(number)}`
+
+// The delivery partner's own number (e.g. DPD), once APX staff enter it, with a link to the partner's tracking.
+export function CarrierLine({ shipment }) {
+  if (!shipment.carrierTracking) return null
+  const href = carrierLink(shipment.carrier, shipment.carrierTracking)
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-slate-600">
+      <span>
+        {shipment.carrier || 'Carrier'} tracking: <span className="font-mono font-semibold text-ink-900">{shipment.carrierTracking}</span>
+      </span>
+      {href && (
+        <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-500 hover:text-accent-500">
+          Track on {shipment.carrier} <ExternalLink size={14} />
+        </a>
+      )}
+    </p>
+  )
+}
 
 export function CopyLinkButton({ number, className = btnSecondary }) {
   const [copied, setCopied] = useState(false)
@@ -174,6 +192,7 @@ export function ShipmentDetail() {
             <p className="mt-1 text-sm text-slate-500">
               Booked {shortDay(s.date)} · {s.service} · {s.pieces} {s.pieces === 1 ? 'piece' : 'pieces'} · {s.weight} kg
             </p>
+            <CarrierLine shipment={s} />
           </div>
           <div className="flex flex-wrap gap-2">
             <CopyLinkButton number={s.number} />

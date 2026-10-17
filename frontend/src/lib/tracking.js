@@ -32,6 +32,27 @@ export const statusInfo = (name) => byName[name] ?? STATUSES[0]
 
 export const CARRIERS = ['DPD', 'DHL', 'FedEx', 'UPS', 'Royal Mail', 'Aramex', 'TCS']
 
+// The delivery partner a shipment's service goes with (e.g. "Direct UK DPD" → DPD), until staff pick one.
+export function carrierFor(shipment) {
+  if (shipment.carrier) return shipment.carrier
+  const service = (shipment.awb.service || '').toLowerCase()
+  return CARRIERS.find((c) => service.includes(c.toLowerCase())) ?? 'DPD'
+}
+
+// The carrier's own tracking page for a number, where we know it.
+const CARRIER_LINKS = {
+  dpd: (n) => `https://www.dpd.co.uk/apps/tracking/?reference=${n}`,
+  dhl: (n) => `https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=${n}`,
+  fedex: (n) => `https://www.fedex.com/fedextrack/?trknbr=${n}`,
+  ups: (n) => `https://www.ups.com/track?tracknum=${n}`,
+  'royal mail': (n) => `https://www.royalmail.com/track-your-item#/tracking-results/${n}`,
+  aramex: (n) => `https://www.aramex.com/track/results?ShipmentNumber=${n}`,
+}
+export function carrierLink(carrier, number) {
+  const link = CARRIER_LINKS[(carrier || '').trim().toLowerCase()]
+  return link && number ? link(encodeURIComponent(number.trim())) : ''
+}
+
 // Local date-time as YYYY-MM-DDTHH:mm (the value format of <input type="datetime-local">).
 export function localDateTime(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0')
