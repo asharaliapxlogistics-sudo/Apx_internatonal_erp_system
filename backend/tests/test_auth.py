@@ -3,25 +3,25 @@ from tests.conftest import login, make_user
 
 def test_login_and_me(client, admin):
     me = client.get("/api/auth/me", headers=admin).json()
-    assert me["email"] == "admin@test.com"
+    assert me["username"] == "admin@test.com"
     assert me["role"] == "admin"
     assert me["createdAt"].endswith("Z")
 
 
-def test_wrong_password_and_unknown_email_look_the_same(client):
+def test_wrong_password_and_unknown_username_look_the_same(client):
     make_user()
-    a = client.post("/api/auth/login", json={"email": "admin@test.com", "password": "nope-nope"})
-    b = client.post("/api/auth/login", json={"email": "ghost@test.com", "password": "nope-nope"})
+    a = client.post("/api/auth/login", json={"username": "admin@test.com", "password": "nope-nope"})
+    b = client.post("/api/auth/login", json={"username": "ghost@test.com", "password": "nope-nope"})
     assert a.status_code == b.status_code == 401
     assert a.json() == b.json()
 
 
 def test_lockout_after_five_failures(client):
     make_user()
-    codes = [client.post("/api/auth/login", json={"email": "admin@test.com", "password": "wrong-pass"}).status_code for _ in range(6)]
+    codes = [client.post("/api/auth/login", json={"username": "admin@test.com", "password": "wrong-pass"}).status_code for _ in range(6)]
     assert codes == [401] * 5 + [429]
     # Locked even with the right password until the lock expires.
-    assert client.post("/api/auth/login", json={"email": "admin@test.com", "password": "admin-pass-1"}).status_code == 429
+    assert client.post("/api/auth/login", json={"username": "admin@test.com", "password": "admin-pass-1"}).status_code == 429
 
 
 def test_requires_token(client):
@@ -51,3 +51,13 @@ def test_change_password(client, admin):
     ok = client.post("/api/auth/change-password", headers=admin, json={"currentPassword": "admin-pass-1", "newPassword": "brand-new-1"})
     assert ok.status_code == 204
     login(client, "admin@test.com", "brand-new-1")
+
+
+def test_plain_usernames_any_case(client, admin):
+    res = client.post("/api/users", headers=admin, json={"name": "Syed Shahid", "username": "Syed_Shahid_Admin", "password": "director-pass", "role": "admin"})
+    assert res.status_code == 201 and res.json()["username"] == "syed_shahid_admin"
+    assert login(client, "SYED_SHAHID_ADMIN", "director-pass")
+    taken = client.post("/api/users", headers=admin, json={"name": "Other", "username": "syed_shahid_admin", "password": "other-pass-1"})
+    assert taken.status_code == 409
+    for bad in ("ab", "has space", "-starts-with-dash", "x" * 61):
+        assert client.post("/api/users", headers=admin, json={"name": "Bad", "username": bad, "password": "other-pass-1"}).status_code == 422

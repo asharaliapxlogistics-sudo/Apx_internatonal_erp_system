@@ -6,6 +6,7 @@ import { useDialog } from '../../../context/Dialog'
 import { useApi } from '../../../hooks/useApi'
 import { getSession } from '../../../lib/auth'
 import { createPortalUser, generatePassword, listPortalUsers, resetPassword, updateUser } from '../../../lib/users'
+import { username } from '../../../lib/validation'
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none'
@@ -18,7 +19,7 @@ export default function PortalUsers({ customer }) {
   const { confirm } = useDialog()
   const { data, error: loadError, reload } = useApi(() => (isAdmin ? listPortalUsers(customer.id) : Promise.resolve([])), [customer.id, isAdmin])
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', username: '', password: '' })
   const [notice, setNotice] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -38,11 +39,13 @@ export default function PortalUsers({ customer }) {
 
   async function add(e) {
     e.preventDefault()
+    const badUsername = username(form.username)
+    if (badUsername) return setError(badUsername)
     if (form.password.length < 8) return setError('Password must be at least 8 characters.')
     await run(async () => {
-      const user = await createPortalUser(customer.id, { ...form, name: form.name.trim(), email: form.email.trim() })
-      setNotice({ title: 'Portal login created', name: user.name, email: user.email, password: form.password })
-      setForm({ name: '', email: '', password: '' })
+      const user = await createPortalUser(customer.id, { ...form, name: form.name.trim(), username: form.username.trim().toLowerCase() })
+      setNotice({ title: 'Portal login created', name: user.name, username: user.username, password: form.password })
+      setForm({ name: '', username: '', password: '' })
       setAdding(false)
     })
   }
@@ -63,7 +66,7 @@ export default function PortalUsers({ customer }) {
     const password = generatePassword()
     run(async () => {
       await resetPassword(u.id, password)
-      setNotice({ title: 'Password reset', name: u.name, email: u.email, password })
+      setNotice({ title: 'Password reset', name: u.name, username: u.username, password })
     })
   }
 
@@ -104,8 +107,8 @@ export default function PortalUsers({ customer }) {
                 <input className={`${inputCls} mt-1`} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </label>
               <label className="block">
-                <span className="text-xs font-semibold text-slate-600">Login email</span>
-                <input type="email" className={`${inputCls} mt-1`} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                <span className="text-xs font-semibold text-slate-600">Username</span>
+                <input className={`${inputCls} mt-1`} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required autoCapitalize="none" autoComplete="off" spellCheck={false} placeholder="acme_owner" />
               </label>
               <label className="block">
                 <span className="text-xs font-semibold text-slate-600">Password</span>
@@ -150,7 +153,7 @@ export default function PortalUsers({ customer }) {
                   <div className="min-w-0 flex-1">
                     <p className={`font-semibold ${u.isActive ? 'text-ink-900' : 'text-slate-400'}`}>{u.name}</p>
                     <p className="truncate text-xs text-slate-500">
-                      {u.email} · last sign-in {when(u.lastLogin)}
+                      {u.username} · last sign-in {when(u.lastLogin)}
                     </p>
                   </div>
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${u.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>

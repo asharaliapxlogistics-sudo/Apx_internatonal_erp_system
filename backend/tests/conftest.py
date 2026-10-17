@@ -58,12 +58,12 @@ def client():
 
 def make_user(role="admin", email="admin@test.com", password="admin-pass-1", customer_id=None):
     with SessionLocal() as db:
-        db.add(User(name=role.title(), email=email, password_hash=hash_password(password), role=role, customer_id=customer_id))
+        db.add(User(name=role.title(), username=email, password_hash=hash_password(password), role=role, customer_id=customer_id))
         db.commit()
 
 
 def login(client, email, password):
-    res = client.post("/api/auth/login", json={"email": email, "password": password})
+    res = client.post("/api/auth/login", json={"username": email, "password": password})
     assert res.status_code == 200, res.text
     return {"Authorization": f"Bearer {res.json()['token']}"}
 

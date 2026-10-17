@@ -13,9 +13,9 @@ export const account = {
 }
 
 export const users = [
-  { id: 'u1', name: 'Imran Qureshi', email: 'imran@acmegarments.pk', role: 'Owner', active: true, lastLogin: '2026-10-11T09:12:00Z' },
-  { id: 'u2', name: 'Sana Khalid', email: 'sana@acmegarments.pk', role: 'Booking clerk', active: true, lastLogin: '2026-10-10T14:40:00Z' },
-  { id: 'u3', name: 'Bilal Hassan', email: 'bilal@acmegarments.pk', role: 'Booking clerk', active: false, lastLogin: '2026-08-02T11:05:00Z' },
+  { id: 'u1', name: 'Imran Qureshi', username: 'imran_acme', role: 'Owner', active: true, lastLogin: '2026-10-11T09:12:00Z' },
+  { id: 'u2', name: 'Sana Khalid', username: 'sana_acme', role: 'Booking clerk', active: true, lastLogin: '2026-10-10T14:40:00Z' },
+  { id: 'u3', name: 'Bilal Hassan', username: 'bilal_acme', role: 'Booking clerk', active: false, lastLogin: '2026-08-02T11:05:00Z' },
 ]
 
 const ev = (status, at, location, remarks = '') => ({ status, at, location, remarks })

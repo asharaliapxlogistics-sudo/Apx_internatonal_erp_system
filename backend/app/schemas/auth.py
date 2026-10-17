@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import EmailStr, Field
+from pydantic import Field
 
 from app.schemas.common import CamelModel, UtcDateTime
-from app.schemas.validators import letters
+from app.schemas.validators import Username, letters
 
 Role = Literal["admin", "staff", "customer"]
 # Long enough to resist guessing; short enough to type.
@@ -14,7 +14,7 @@ Password = Field(min_length=8, max_length=128)
 class UserOut(CamelModel):
     id: str
     name: str
-    email: str
+    username: str
     role: Role
     customer_id: str | None
     is_active: bool
@@ -23,7 +23,7 @@ class UserOut(CamelModel):
 
 
 class LoginIn(CamelModel):
-    email: EmailStr
+    username: str = Field(max_length=190)
     password: str = Field(max_length=128)
     remember: bool = False
 
@@ -41,7 +41,7 @@ class ChangePasswordIn(CamelModel):
 
 class UserCreate(CamelModel):
     name: letters("Name") = Field(min_length=1, max_length=120)
-    email: EmailStr
+    username: Username
     password: str = Password
     role: Role = "staff"
     customer_id: str | None = None

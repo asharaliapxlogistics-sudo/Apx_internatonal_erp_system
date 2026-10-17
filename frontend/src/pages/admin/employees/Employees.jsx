@@ -6,11 +6,12 @@ import { useDialog } from '../../../context/Dialog'
 import { useApi } from '../../../hooks/useApi'
 import { getSession } from '../../../lib/auth'
 import { ROLES, createUser, generatePassword, listUsers, resetPassword, updateUser } from '../../../lib/users'
+import { username } from '../../../lib/validation'
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none'
 
-const emptyForm = () => ({ name: '', email: '', role: 'staff', password: '' })
+const emptyForm = () => ({ name: '', username: '', role: 'staff', password: '' })
 
 function Field({ label, required, hint, className = '', children }) {
   return (
@@ -34,10 +35,12 @@ function AddEmployee({ onCreated, onCancel }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    const badUsername = username(form.username)
+    if (badUsername) return setError(badUsername)
     if (form.password.length < 8) return setError('Password must be at least 8 characters.')
     setSaving(true)
     try {
-      const user = await createUser({ ...form, name: form.name.trim(), email: form.email.trim() })
+      const user = await createUser({ ...form, name: form.name.trim(), username: form.username.trim().toLowerCase() })
       onCreated(user, form.password)
     } catch (err) {
       setError(err.message)
@@ -57,8 +60,8 @@ function AddEmployee({ onCreated, onCancel }) {
         <Field label="Full name" required>
           <input className={inputCls} value={form.name} onChange={set('name')} required autoFocus />
         </Field>
-        <Field label="Login email" required>
-          <input type="email" className={inputCls} value={form.email} onChange={set('email')} required placeholder="name@apxinternational.com" />
+        <Field label="Username" required hint="Used to sign in. No spaces, e.g. ali_staff">
+          <input className={inputCls} value={form.username} onChange={set('username')} required autoCapitalize="none" autoComplete="off" spellCheck={false} placeholder="ali_staff" />
         </Field>
         <Field label="Role" required hint={ROLES.find((r) => r.value === form.role)?.hint}>
           <select className={inputCls} value={form.role} onChange={set('role')}>
@@ -122,7 +125,7 @@ export default function Employees() {
   // Customer-portal logins are managed with the customer, not here.
   const staff = (data ?? []).filter((u) => u.role !== 'customer')
   const q = query.trim().toLowerCase()
-  const shown = staff.filter((u) => !q || `${u.name} ${u.email} ${u.role}`.toLowerCase().includes(q))
+  const shown = staff.filter((u) => !q || `${u.name} ${u.username} ${u.role}`.toLowerCase().includes(q))
 
   async function run(user, action) {
     setError('')
@@ -173,7 +176,7 @@ export default function Employees() {
     const password = generatePassword()
     run(user, async () => {
       await resetPassword(user.id, password)
-      setNotice({ title: 'Password reset', name: user.name, email: user.email, password })
+      setNotice({ title: 'Password reset', name: user.name, username: user.username, password })
     })
   }
 
@@ -202,7 +205,7 @@ export default function Employees() {
           onCancel={() => setAdding(false)}
           onCreated={(user, password) => {
             setAdding(false)
-            setNotice({ title: 'Account created', name: user.name, email: user.email, password })
+            setNotice({ title: 'Account created', name: user.name, username: user.username, password })
             reload()
           }}
         />
@@ -225,7 +228,7 @@ export default function Employees() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name or email…"
+              placeholder="Search name or username…"
               className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pr-4 pl-11 text-sm focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none"
             />
           </div>
@@ -260,7 +263,7 @@ export default function Employees() {
                             {u.name}
                             {isMe && <span className="ml-2 rounded-md bg-brand-50 px-1.5 py-0.5 text-xs font-semibold text-brand-600">You</span>}
                           </p>
-                          <p className="text-xs text-slate-500">{u.email}</p>
+                          <p className="text-xs text-slate-500">{u.username}</p>
                         </td>
                         <td className="px-4 py-3">
                           <select

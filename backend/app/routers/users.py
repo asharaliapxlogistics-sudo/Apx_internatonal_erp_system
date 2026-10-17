@@ -35,21 +35,20 @@ def list_users(_: AdminUser, db: DbSession, customer_id: str | None = Query(None
 
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user(body: UserCreate, admin: AdminUser, db: DbSession):
-    email = body.email.strip().lower()
-    if db.scalar(select(User).where(func.lower(User.email) == email)):
-        raise HTTPException(status.HTTP_409_CONFLICT, "A user with this email already exists.")
+    if db.scalar(select(User).where(User.username == body.username)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This username is already taken.")
     if body.role == "customer" and not (body.customer_id and db.get(Customer, body.customer_id)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "A customer login must be linked to a customer account.")
     user = User(
         name=body.name.strip(),
-        email=email,
+        username=body.username,
         password_hash=hash_password(body.password),
         role=body.role,
         customer_id=body.customer_id if body.role == "customer" else None,
     )
     db.add(user)
     db.flush()
-    record(db, admin, "user.create", "user", user.id, f"Added {user.name} ({user.email}) as {user.role}")
+    record(db, admin, "user.create", "user", user.id, f"Added {user.name} ({user.username}) as {user.role}")
     db.commit()
     return user
 

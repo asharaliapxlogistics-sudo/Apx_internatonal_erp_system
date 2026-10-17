@@ -13,7 +13,7 @@ if len(settings.jwt_secret) < 32:
 ALGORITHM = "HS256"
 password_hash = PasswordHash.recommended()  # Argon2
 
-# Checked when the email is unknown, so a wrong email takes as long as a wrong password.
+# Checked when the username is unknown, so a wrong username takes as long as a wrong password.
 _DUMMY_HASH = password_hash.hash("not-a-real-password")
 
 
@@ -41,7 +41,7 @@ def read_token(token: str) -> str | None:
 
 
 class LoginLimiter:
-    """Locks an email + IP pair after too many wrong passwords.
+    """Locks a username + IP pair after too many wrong passwords.
 
     Kept in memory: fine for one API instance; move to the database if the API is ever scaled out.
     """

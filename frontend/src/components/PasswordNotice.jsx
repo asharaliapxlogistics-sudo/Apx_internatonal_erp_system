@@ -20,7 +20,7 @@ export default function PasswordNotice({ notice, onClose }) {
         <div>
           <p className="font-bold text-emerald-800">{notice.title}</p>
           <p className="mt-1 text-sm text-emerald-700">
-            Give this password to <b>{notice.name}</b> ({notice.email}). It is shown only now; they can change it from their
+            Give this password to <b>{notice.name}</b> (username <b>{notice.username}</b>). It is shown only now; they can change it from their
             profile menu after signing in.
           </p>
         </div>

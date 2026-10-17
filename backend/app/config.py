@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Login lifetime: a work shift normally, longer with "Keep me signed in".
     token_hours: int = 12
     remember_days: int = 30
-    # Wrong-password lockout per email + IP address.
+    # Wrong-password lockout per username + IP address.
     login_max_failures: int = 5
     login_lock_minutes: int = 15
 

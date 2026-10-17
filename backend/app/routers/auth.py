@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.config import settings
 from app.deps import CurrentUser, DbSession
@@ -13,22 +13,22 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, request: Request, db: DbSession):
-    email = body.email.strip().lower()
+    username = body.username.strip().lower()
     ip = request.client.host if request.client else ""
-    key = f"{email}|{ip}"
+    key = f"{username}|{ip}"
     if login_limiter.is_locked(key):
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
             f"Too many wrong attempts. Try again in {settings.login_lock_minutes} minutes.",
         )
 
-    user = db.scalar(select(User).where(func.lower(User.email) == email))
+    user = db.scalar(select(User).where(User.username == username))
     if not verify_password(body.password, user.password_hash if user else None) or not user.is_active:
         login_limiter.fail(key)
-        record(db, None, "auth.login_failed", "login", "", f"Failed sign-in for {email}", ip=ip)
+        record(db, None, "auth.login_failed", "login", "", f"Failed sign-in for {username}", ip=ip)
         db.commit()
-        # Same message whether the email or the password is wrong, so emails cannot be discovered.
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password.")
+        # Same message whether the username or the password is wrong, so usernames cannot be discovered.
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect username or password.")
 
     login_limiter.reset(key)
     record(db, user, "auth.login", "login", user.id, f"{user.name} signed in", ip=ip)

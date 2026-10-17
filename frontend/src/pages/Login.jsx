@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Globe2, Lock, Mail, PackageCheck, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Globe2, Lock, PackageCheck, ShieldCheck, UserRound } from 'lucide-react'
 import { WEBSITE_LABEL, WEBSITE_URL } from '../config/site'
 import { getSession, login } from '../lib/auth'
 
@@ -20,7 +20,7 @@ const TEXT = {
     blurb: 'Bookings, air waybills, customs, billing and tracking for every APX customer, managed from a single portal.',
     kicker: 'Admin Portal',
     intro: 'Sign in with your APX staff account to continue.',
-    placeholder: 'name@apxinternational.com',
+    placeholder: 'e.g. ali_staff',
     footer: 'Authorized personnel only.',
     switch: { question: 'Are you a customer?', label: 'Customer portal login', to: '/portal/login' },
   },
@@ -30,7 +30,7 @@ const TEXT = {
     blurb: 'Send your daily addresses, follow every parcel, print airway bills and see your invoices, any time.',
     kicker: 'Customer Portal',
     intro: 'Sign in with the account APX created for your company.',
-    placeholder: 'you@yourcompany.com',
+    placeholder: 'Your username',
     footer: 'Need an account? Contact APX International.',
     switch: { question: 'Are you APX staff?', label: 'Admin portal login', to: '/login' },
   },
@@ -38,7 +38,7 @@ const TEXT = {
 
 export default function Login({ portal = false }) {
   const text = TEXT[portal ? 'portal' : 'staff']
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
@@ -54,7 +54,7 @@ export default function Login({ portal = false }) {
     setError('')
     setSubmitting(true)
     try {
-      const user = await login(email, password, remember)
+      const user = await login(username, password, remember)
       navigate(homeFor(user), { replace: true })
     } catch (err) {
       setError(err.message)
@@ -134,16 +134,18 @@ export default function Login({ portal = false }) {
             )}
 
             <label className="block">
-              <span className="text-sm font-semibold text-ink-900">Email address</span>
+              <span className="text-sm font-semibold text-ink-900">Username</span>
               <div className="relative mt-1.5">
-                <Mail size={18} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+                <UserRound size={18} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   placeholder={text.placeholder}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pr-4 pl-11 text-sm text-ink-900 transition placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100 focus:outline-none"
                 />
               </div>

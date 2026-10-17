@@ -9,12 +9,12 @@ export const ROLES = [
 const userPath = (id) => `/users/${encodeURIComponent(id)}`
 
 export const listUsers = () => api('/users')
-export const createUser = ({ name, email, role, password }) => api('/users', { method: 'POST', body: { name, email, role, password } })
+export const createUser = ({ name, username, role, password }) => api('/users', { method: 'POST', body: { name, username, role, password } })
 
 // Customer-portal logins of one customer company.
 export const listPortalUsers = (customerId) => api(`/users?customerId=${encodeURIComponent(customerId)}`)
-export const createPortalUser = (customerId, { name, email, password }) =>
-  api('/users', { method: 'POST', body: { name, email, password, role: 'customer', customerId } })
+export const createPortalUser = (customerId, { name, username, password }) =>
+  api('/users', { method: 'POST', body: { name, username, password, role: 'customer', customerId } })
 export const updateUser = (id, changes) => api(userPath(id), { method: 'PATCH', body: changes })
 export const resetPassword = (id, newPassword) => api(`${userPath(id)}/reset-password`, { method: 'POST', body: { newPassword } })
 

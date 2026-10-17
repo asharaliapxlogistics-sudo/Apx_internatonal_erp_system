@@ -54,7 +54,7 @@ export default function Account() {
                   {u.id === user.id && <span className="ml-2 rounded-md bg-brand-50 px-1.5 py-0.5 text-xs font-semibold text-brand-600">You</span>}
                 </p>
                 <p className="truncate text-xs text-slate-500">
-                  {u.email} · last sign-in {when(u.lastLogin)}
+                  {u.username} · last sign-in {when(u.lastLogin)}
                 </p>
               </div>
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${u.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>

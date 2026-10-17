@@ -11,7 +11,7 @@ class User(UUIDPk, Timestamps, Base):
     __tablename__ = "users"
 
     name: Mapped[str] = mapped_column(String(120))
-    email: Mapped[str] = mapped_column(String(190), unique=True)
+    username: Mapped[str] = mapped_column(String(190), unique=True)  # login name, lower-case
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="staff")
     # Set only for customer-portal logins.

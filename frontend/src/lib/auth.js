@@ -12,7 +12,7 @@ function read() {
   }
 }
 
-// { id, name, email, role, token } of the signed-in user, or null when signed out or expired.
+// { id, name, username, role, token } of the signed-in user, or null when signed out or expired.
 export function getSession() {
   const s = read()
   if (!s?.token || !s.user) return null
@@ -23,8 +23,8 @@ export function getSession() {
   return { ...s.user, token: s.token }
 }
 
-export async function login(email, password, remember) {
-  const res = await api('/auth/login', { method: 'POST', body: { email, password, remember }, auth: false })
+export async function login(username, password, remember) {
+  const res = await api('/auth/login', { method: 'POST', body: { username, password, remember }, auth: false })
   logout()
   const session = { token: res.token, expiresAt: res.expiresAt, user: res.user }
   ;(remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(session))

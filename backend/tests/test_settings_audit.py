@@ -32,7 +32,7 @@ def test_number_series_can_only_move_forward(client, admin):
 
 
 def test_actions_are_logged(client, staff, admin):
-    client.post("/api/auth/login", json={"email": "staff@test.com", "password": "wrong-pass"})
+    client.post("/api/auth/login", json={"username": "staff@test.com", "password": "wrong-pass"})
     c = new_customer(client, staff, "Acme")
     client.put(f"/api/customers/{c['id']}", headers=staff, json={"name": "Acme", "city": "Karachi", "phone": "0300-7654321"})
     a = new_awb(client, staff)

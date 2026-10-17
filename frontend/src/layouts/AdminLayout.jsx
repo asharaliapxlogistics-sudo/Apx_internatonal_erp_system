@@ -138,7 +138,7 @@ function UserMenu() {
         <div role="menu" className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
           <div className="border-b border-slate-100 px-3 py-2">
             <p className="text-sm font-semibold text-ink-900">{session?.name}</p>
-            <p className="truncate text-xs text-slate-500">{session?.email}</p>
+            <p className="truncate text-xs text-slate-500">{session?.username}</p>
           </div>
           <button
             role="menuitem"

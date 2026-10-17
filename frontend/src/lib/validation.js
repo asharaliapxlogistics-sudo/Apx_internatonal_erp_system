@@ -38,6 +38,12 @@ export function email(value) {
   return !v || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? '' : 'Enter a valid email address.'
 }
 
+// Login name, e.g. syed_shahid_admin. Same rule as the backend (validators.username).
+export function username(value) {
+  const v = String(value ?? '').trim().toLowerCase()
+  return /^[a-z0-9][a-z0-9._@-]{2,59}$/.test(v) ? '' : 'Username: 3-60 letters or numbers, no spaces (. _ - allowed).'
+}
+
 export function cnic(value) {
   const v = String(value ?? '').trim()
   return !v || /^\d{5}-?\d{7}-?\d$/.test(v) ? '' : 'CNIC must be 13 digits, e.g. 42101-1234567-1.'

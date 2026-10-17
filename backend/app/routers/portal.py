@@ -35,7 +35,7 @@ class CompanyOut(CamelModel):
 class TeamMember(CamelModel):
     id: str
     name: str
-    email: str
+    username: str
     is_active: bool
     last_login: UtcDateTime | None
 
@@ -53,7 +53,7 @@ def portal_me(user: PortalUser, db: DbSession):
     seen = last_logins(db, [u.id for u in team])
 
     def member(u: User) -> TeamMember:
-        return TeamMember(id=u.id, name=u.name, email=u.email, is_active=u.is_active, last_login=seen.get(u.id))
+        return TeamMember(id=u.id, name=u.name, username=u.username, is_active=u.is_active, last_login=seen.get(u.id))
 
     return PortalMe(user=member(user), company=CompanyOut.model_validate(company), team=[member(u) for u in team])
 

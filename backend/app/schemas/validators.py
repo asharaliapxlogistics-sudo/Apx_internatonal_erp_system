@@ -112,6 +112,17 @@ def text_with_letters(label: str):
 OptionalEmail = Annotated[str, AfterValidator(optional_email)]
 
 
+def username(v: str) -> str:
+    """Login name, e.g. syed_shahid_admin. Stored lower-case; "@" kept so older email-style logins stay valid."""
+    v = v.strip().lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._@-]{2,59}", v):
+        raise ValueError("Username: 3-60 letters or numbers, no spaces (. _ - allowed).")
+    return v
+
+
+Username = Annotated[str, AfterValidator(username)]
+
+
 def letters(label: str):
     return Annotated[str, AfterValidator(text_with_letters(label))]
 

@@ -11,7 +11,7 @@ STAFF_ENDPOINTS = [
 
 
 def portal_login(client, admin, customer_id, email, name="Portal User", password="portal-pass-1"):
-    res = client.post("/api/users", headers=admin, json={"name": name, "email": email, "password": password, "role": "customer", "customerId": customer_id})
+    res = client.post("/api/users", headers=admin, json={"name": name, "username": email, "password": password, "role": "customer", "customerId": customer_id})
     assert res.status_code == 201, res.text
     return res.json()
 
@@ -26,11 +26,11 @@ def test_customer_sees_only_own_company(client, admin):
     acme_token = login(client, "owner@acme.com", "portal-pass-1")
     me = client.get("/api/portal/me", headers=acme_token).json()
     assert me["company"]["name"] == "Acme" and me["company"]["accountNo"] == "APX-1001" and me["company"]["phone"] == "0300-7654321"
-    assert me["user"]["email"] == "owner@acme.com" and me["user"]["lastLogin"]
-    assert sorted(t["email"] for t in me["team"]) == ["clerk@acme.com", "owner@acme.com"]  # never Bolt's people
+    assert me["user"]["username"] == "owner@acme.com" and me["user"]["lastLogin"]
+    assert sorted(t["username"] for t in me["team"]) == ["clerk@acme.com", "owner@acme.com"]  # never Bolt's people
 
     bolt_me = client.get("/api/portal/me", headers=login(client, "owner@bolt.com", "portal-pass-1")).json()
-    assert bolt_me["company"]["name"] == "Bolt" and [t["email"] for t in bolt_me["team"]] == ["owner@bolt.com"]
+    assert bolt_me["company"]["name"] == "Bolt" and [t["username"] for t in bolt_me["team"]] == ["owner@bolt.com"]
 
 
 def test_customer_cannot_use_staff_screens(client, admin):
@@ -59,7 +59,7 @@ def test_admin_manages_one_customers_logins(client, admin, staff):
     login(client, "owner@acme.com", "portal-pass-1")
 
     listed = client.get(f"/api/users?customerId={acme['id']}", headers=admin).json()
-    assert [u["email"] for u in listed] == ["owner@acme.com"] and listed[0]["lastLogin"]
+    assert [u["username"] for u in listed] == ["owner@acme.com"] and listed[0]["lastLogin"]
     assert client.get(f"/api/users?customerId={acme['id']}", headers=staff).status_code == 403
 
     # Disabling locks them out at once.
@@ -75,7 +75,7 @@ def test_customer_login_and_staff_account_never_swap(client, admin, staff):
     staff_id = client.get("/api/auth/me", headers=staff).json()["id"]
     assert client.patch(f"/api/users/{staff_id}", headers=admin, json={"role": "customer"}).status_code == 400
     # A portal login needs a real customer.
-    bad = client.post("/api/users", headers=admin, json={"name": "x", "email": "x@x.com", "password": "portal-pass-1", "role": "customer"})
+    bad = client.post("/api/users", headers=admin, json={"name": "x", "username": "x@x.com", "password": "portal-pass-1", "role": "customer"})
     assert bad.status_code == 400
 
 
@@ -83,7 +83,7 @@ def test_deleting_customer_removes_its_logins(client, admin):
     c = new_customer(client, admin)
     portal_login(client, admin, c["id"], "owner@acme.com")
     assert client.delete(f"/api/customers/{c['id']}", headers=admin).status_code == 204
-    assert client.post("/api/auth/login", json={"email": "owner@acme.com", "password": "portal-pass-1"}).status_code == 401
+    assert client.post("/api/auth/login", json={"username": "owner@acme.com", "password": "portal-pass-1"}).status_code == 401
 
 
 def test_portal_shipments_are_own_only(client, admin):

@@ -18,13 +18,13 @@ Settings come from `backend/.env` (see `.env.example`). Never commit `.env`.
 ## Logins
 
 Passwords are stored as Argon2 hashes. Signing in returns a JWT (12 hours, or 30 days with
-"Keep me signed in"); `JWT_SECRET` in `.env` signs it. Five wrong passwords lock that email
+"Keep me signed in"); `JWT_SECRET` in `.env` signs it. Five wrong passwords lock that username
 for 15 minutes from the same address.
 
 Create an admin (asks for the password; add `--generate-password` to print a temporary one):
 
 ```
-.venv\Scripts\python.exe -m app.cli create-admin --name "Your Name" --email you@example.com
+.venv\Scripts\python.exe -m app.cli create-admin --name "Your Name" --username your_name
 ```
 
 Admins manage other accounts through `/api/users` (see http://localhost:8000/docs).

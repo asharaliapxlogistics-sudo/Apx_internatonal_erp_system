@@ -10,7 +10,7 @@ const PortalAccountContext = createContext(null)
 
 const SAMPLE = {
   preview: true,
-  user: { id: users[0].id, name: users[0].name, email: users[0].email, isActive: true, lastLogin: users[0].lastLogin },
+  user: { id: users[0].id, name: users[0].name, username: users[0].username, isActive: true, lastLogin: users[0].lastLogin },
   company: {
     name: account.company,
     accountNo: account.accountNo,
@@ -24,7 +24,7 @@ const SAMPLE = {
     country: account.country,
     ntn: account.ntn,
   },
-  team: users.map((u) => ({ id: u.id, name: u.name, email: u.email, isActive: u.active, lastLogin: u.lastLogin })),
+  team: users.map((u) => ({ id: u.id, name: u.name, username: u.username, isActive: u.active, lastLogin: u.lastLogin })),
 }
 
 export function PortalAccountProvider({ children }) {
