@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Ban, FileText, MapPin, Plus, Printer, RotateCcw, Trash2 } from 'lucide-react'
+import { ArrowLeft, Ban, ChevronDown, FileText, MapPin, Plus, Printer, RotateCcw, Tag, Trash2 } from 'lucide-react'
 import AirwayBill from '../../../components/awb/AirwayBill'
 import LoadState from '../../../components/LoadState'
 import { useDialog } from '../../../context/Dialog'
@@ -8,6 +8,58 @@ import { useApi } from '../../../hooks/useApi'
 import { deleteAwb, getAwb, restoreAwb, voidAwb } from '../../../lib/awb'
 
 const COPIES = ['SHIPPER COPY', 'ACCOUNTS COPY', 'CONSIGNEE COPY', 'POD COPY']
+
+// Print menu: the Air Waybill copies on A4, or the 4x6 shipping label on its own page.
+function PrintMenu({ number, canPrintAwb }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => {
+      if (e.type === 'keydown' ? e.key === 'Escape' : !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [open])
+
+  const item = 'flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-ink-900 hover:bg-slate-100 disabled:opacity-50'
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600"
+      >
+        <Printer size={16} /> Print <ChevronDown size={16} />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
+          <button
+            role="menuitem"
+            disabled={!canPrintAwb}
+            onClick={() => {
+              setOpen(false)
+              window.print()
+            }}
+            className={item}
+          >
+            <Printer size={16} /> Airway Bill <span className="ml-auto text-xs text-slate-400">A4</span>
+          </button>
+          <button role="menuitem" onClick={() => navigate(`/admin/awb/${number}/label`)} className={item}>
+            <Tag size={16} /> Shipping label <span className="ml-auto text-xs text-slate-400">4 x 6</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function AwbView() {
   const { number } = useParams()
@@ -144,13 +196,7 @@ export default function AwbView() {
           >
             <Trash2 size={16} /> Delete
           </button>
-          <button
-            onClick={() => window.print()}
-            disabled={!copies.length}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600 disabled:opacity-50"
-          >
-            <Printer size={16} /> Print
-          </button>
+          <PrintMenu number={awb.number} canPrintAwb={copies.length > 0} />
         </div>
       </div>
 
