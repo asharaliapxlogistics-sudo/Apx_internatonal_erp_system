@@ -63,13 +63,14 @@ export default function InvoiceForm() {
     }
   }, [customerId])
 
-  // Tracking numbers come only from this customer's active AWBs; ones already on an invoice are marked.
+  // Tracking # is typed freely. Any active AWB number fills the line; this customer's AWBs
+  // (linked, or made with their account no.) are suggested. Ones already on an invoice are flagged.
   const [awbs, setAwbs] = useState([])
   const [billed, setBilled] = useState({})
   useEffect(() => {
     let current = true
     if (!customerId) return
-    Promise.all([listAwbs({ customerId }), listInvoices({ customerId })]).then(
+    Promise.all([listAwbs(), listInvoices({ customerId })]).then(
       ([awbList, invoices]) => {
         if (!current) return
         setAwbs(awbList.filter((a) => a.status !== 'Void'))
@@ -97,9 +98,14 @@ export default function InvoiceForm() {
     setLines(lines.map((l) => (l.tracking ? { ...newLine(month), nature: l.nature, amount: l.amount } : l)))
   }
 
-  function pickAwb(i, number) {
-    const awb = awbs.find((a) => a.number === number)
-    setLines(lines.map((l, j) => (j !== i ? l : awb ? { ...l, ...lineFromAwb(awb) } : { ...l, tracking: '' })))
+  const customer = customers.find((c) => c.id === customerId)
+  const suggested = awbs.filter(
+    (a) => !billed[a.number] && (a.customerId === customerId || (customer && a.accountNo === customer.accountNo)),
+  )
+
+  function typeTracking(i, value) {
+    const awb = awbs.find((a) => a.number === value.trim())
+    setLines(lines.map((l, j) => (j !== i ? l : awb ? { ...l, ...lineFromAwb(awb) } : { ...l, tracking: value })))
   }
 
   function pickMonth(e) {
@@ -112,7 +118,10 @@ export default function InvoiceForm() {
     e.preventDefault()
     setError('')
     if (!lines.length) return setError('Add at least one line to the invoice.')
-    if (lines.some((l) => !l.tracking)) return setError('Select a tracking # for every line.')
+    if (lines.some((l) => !l.tracking.trim())) return setError('Enter a tracking # for every line.')
+    const numbers = lines.map((l) => l.tracking.trim())
+    const dup = numbers.find((n, i) => numbers.indexOf(n) !== i)
+    if (dup) return setError(`Tracking # ${dup} is on this invoice twice.`)
     if (lines.some((l) => l.amount === '' || l.amount === null)) return setError('Enter an amount for every line.')
 
     setSaving(true)
@@ -199,27 +208,20 @@ export default function InvoiceForm() {
                       <input type="date" className={inputCls} value={l.date} onChange={setLine(i, 'date')} required />
                     </td>
                     <td className="px-1 py-1.5">
-                      <select
+                      <input
                         className={inputCls}
                         value={l.tracking}
-                        onChange={(e) => pickAwb(i, e.target.value)}
+                        onChange={(e) => typeTracking(i, e.target.value)}
+                        list="invoice-awbs"
+                        placeholder={customerId ? 'Type or pick AWB #' : 'Select customer first'}
                         disabled={!customerId}
                         required
-                      >
-                        <option value="">
-                          {!customerId ? 'Select customer first' : awbs.length ? 'Select AWB…' : 'No AWBs for this customer'}
-                        </option>
-                        {awbs.map((a) => {
-                          const onOtherLine = lines.some((o, j) => j !== i && o.tracking === a.number)
-                          const invoiced = billed[a.number]
-                          return (
-                            <option key={a.number} value={a.number} disabled={onOtherLine || !!invoiced}>
-                              {a.number} · {a.consignee.name}
-                              {invoiced ? ` (billed ${invoiced})` : onOtherLine ? ' (on this invoice)' : ''}
-                            </option>
-                          )
-                        })}
-                      </select>
+                      />
+                      {billed[l.tracking.trim()] && (
+                        <span className="mt-0.5 block text-xs font-medium text-accent-500">
+                          Already billed on {billed[l.tracking.trim()]}
+                        </span>
+                      )}
                     </td>
                     <td className="px-1 py-1.5">
                       <select className={inputCls} value={l.nature} onChange={setLine(i, 'nature')}>
@@ -265,6 +267,15 @@ export default function InvoiceForm() {
                 ))}
               </tbody>
             </table>
+            <datalist id="invoice-awbs">
+              {suggested
+                .filter((a) => !lines.some((l) => l.tracking === a.number))
+                .map((a) => (
+                  <option key={a.number} value={a.number}>
+                    {a.consignee.name} · {a.consignee.country}
+                  </option>
+                ))}
+            </datalist>
           </div>
         )}
       </section>
