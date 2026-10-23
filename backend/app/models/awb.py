@@ -93,7 +93,7 @@ class AwbItem(Base):
     hs_code: Mapped[str] = mapped_column(String(20), default="")
     unit: Mapped[str] = mapped_column(String(20), default="Piece(s)")
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 2))
-    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))  # USD
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 4))  # USD
 
     awb: Mapped[Awb] = relationship(back_populates="items")
 

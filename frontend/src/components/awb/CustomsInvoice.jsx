@@ -3,6 +3,11 @@ import './customsInvoice.css'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const usd = (n) => Number(n || 0).toFixed(2)
+// Unit prices keep up to 4 decimals (0.015 stays 0.015, 2.5 shows 2.50).
+const price = (n) => {
+  const v = Number(n || 0)
+  return v.toFixed(Math.min(4, Math.max(2, (String(v).split('.')[1] ?? '').length)))
+}
 const qty = (n) => String(Number(n || 0))
 
 function Party({ title, party, taxId }) {
@@ -77,7 +82,7 @@ export default function CustomsInvoice({ awb }) {
               <td>{i.hsCode}</td>
               <td>{i.unit}</td>
               <td>{qty(i.quantity)}</td>
-              <td className="ci-num">{usd(i.unitPrice)}</td>
+              <td className="ci-num">{price(i.unitPrice)}</td>
               <td className="ci-num">{usd(itemTotal(i))}</td>
             </tr>
           ))}

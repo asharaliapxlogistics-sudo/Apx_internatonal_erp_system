@@ -11,6 +11,7 @@ export const COUNTRIES = [
 export const SERVICES = [
   'VIA UK UPS (SAVER)',
   'VIA UK DHL',
+  'DHL KARACHI',
   'SINGAPORE FEDEX',
   'DIRECT AUSTRALIA',
   'DIRECT DUBAI',

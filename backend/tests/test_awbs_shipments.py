@@ -165,6 +165,9 @@ def test_customs_invoice_items(client, staff):
     # Switching Gift / Commercial keeps the items.
     d = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Commercial", "items": c["items"]}).json()
     assert (d["invoiceType"], len(d["items"]), d["declaredValue"]) == ("Commercial", 1, 75.0)
+    # Fractions of a cent per piece are kept.
+    e = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"items": [{"description": "BUTTONS", "quantity": 3085, "unitPrice": 0.015}]}).json()
+    assert (e["items"][0]["unitPrice"], e["declaredValue"]) == (0.015, 46.28)
 
     bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"invoiceType": "Sample", "items": []})
     assert bad.status_code == 422

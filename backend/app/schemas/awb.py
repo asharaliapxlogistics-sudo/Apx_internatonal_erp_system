@@ -45,6 +45,8 @@ class Piece(CamelModel):
 INVOICE_TYPES = ("Gift", "Commercial")
 
 Quantity = Annotated[Decimal, Field(gt=0, max_digits=10, decimal_places=2), PlainSerializer(float, return_type=float)]
+# Cheap items are priced in fractions of a cent (e.g. 3085 pieces at USD 0.015).
+UnitPrice = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4), PlainSerializer(float, return_type=float)]
 
 
 class Item(CamelModel):
@@ -54,7 +56,7 @@ class Item(CamelModel):
     hs_code: str = Field(default="", max_length=20)
     unit: str = Field(default="Piece(s)", max_length=20)
     quantity: Quantity
-    unit_price: Money
+    unit_price: UnitPrice
 
 
 class Customs(CamelModel):

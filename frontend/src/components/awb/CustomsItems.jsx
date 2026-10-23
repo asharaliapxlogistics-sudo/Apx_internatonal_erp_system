@@ -61,7 +61,7 @@ export default function CustomsItems({ invoiceType, onInvoiceTypeChange, items, 
                     <input className={cls} type="number" min="0" step="any" value={i.quantity} onChange={setItem(n, 'quantity')} />
                   </td>
                   <td className="py-1.5 pr-2">
-                    <input className={cls} type="number" min="0" step="0.01" value={i.unitPrice} onChange={setItem(n, 'unitPrice')} />
+                    <input className={cls} type="number" min="0" step="any" value={i.unitPrice} onChange={setItem(n, 'unitPrice')} />
                   </td>
                   <td className="py-1.5 pt-3.5 text-right font-semibold text-ink-900">{usd(itemTotal(i))}</td>
                   <td className="py-1.5 text-right">
