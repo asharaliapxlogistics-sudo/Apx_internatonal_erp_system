@@ -24,6 +24,9 @@ function Field({ label, required, hint, className = '', children }) {
   )
 }
 
+// Customer select value for an invoice without a customer account, billed from its AWBs.
+const WALK_IN = 'walk-in'
+
 const thisMonth = () => new Date().toISOString().slice(0, 7)
 const newLine = (month) => ({ ...emptyLine, date: `${month}-01` })
 
@@ -42,6 +45,8 @@ export default function InvoiceForm() {
   const { customerId: filterCustomerId, customers } = useCustomerFilter()
 
   const [customerId, setCustomerId] = useState(filterCustomerId ?? '')
+  const walkIn = customerId === WALK_IN
+  const [billTo, setBillTo] = useState('')
   const [month, setMonth] = useState(thisMonth)
   const [lines, setLines] = useState(() => [newLine(thisMonth())])
   const [prevBalance, setPrevBalance] = useState(0)
@@ -53,7 +58,7 @@ export default function InvoiceForm() {
   // The customer's last outstanding balance carries over; staff can still edit it.
   useEffect(() => {
     let current = true
-    if (!customerId) return
+    if (!customerId || walkIn) return
     lastOutstanding(customerId).then(
       (v) => current && setPrevBalance(v),
       (err) => current && setError(`Could not load the previous balance: ${err.message}`),
@@ -61,16 +66,17 @@ export default function InvoiceForm() {
     return () => {
       current = false
     }
-  }, [customerId])
+  }, [customerId, walkIn])
 
   // Tracking # is typed freely. Any active AWB number fills the line; this customer's AWBs
-  // (linked, or made with their account no.) are suggested. Ones already on an invoice are flagged.
+  // (linked, or made with their account no.) are suggested; for a walk-in, AWBs without an account.
+  // Ones already on an invoice are flagged.
   const [awbs, setAwbs] = useState([])
   const [billed, setBilled] = useState({})
   useEffect(() => {
     let current = true
     if (!customerId) return
-    Promise.all([listAwbs(), listInvoices({ customerId })]).then(
+    Promise.all([listAwbs(), listInvoices(walkIn ? {} : { customerId })]).then(
       ([awbList, invoices]) => {
         if (!current) return
         setAwbs(awbList.filter((a) => a.status !== 'Void'))
@@ -83,7 +89,7 @@ export default function InvoiceForm() {
     return () => {
       current = false
     }
-  }, [customerId])
+  }, [customerId, walkIn])
 
   const total = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)
   const payable = total + (Number(prevBalance) || 0) - (Number(received) || 0)
@@ -91,7 +97,7 @@ export default function InvoiceForm() {
   function pickCustomer(e) {
     const cid = e.target.value
     setCustomerId(cid)
-    if (!cid) setPrevBalance(0)
+    if (!cid || cid === WALK_IN) setPrevBalance(0)
     setAwbs([])
     setBilled({})
     // AWBs of the previous customer cannot stay on this invoice.
@@ -100,11 +106,17 @@ export default function InvoiceForm() {
 
   const customer = customers.find((c) => c.id === customerId)
   const suggested = awbs.filter(
-    (a) => !billed[a.number] && (a.customerId === customerId || (customer && a.accountNo === customer.accountNo)),
+    (a) =>
+      !billed[a.number] &&
+      (walkIn
+        ? !a.customerId && !a.accountNo
+        : a.customerId === customerId || (customer && a.accountNo === customer.accountNo)),
   )
 
   function typeTracking(i, value) {
     const awb = awbs.find((a) => a.number === value.trim())
+    // A walk-in invoice is billed to the shipper of its first AWB unless a name was typed.
+    if (awb && walkIn && !billTo.trim()) setBillTo(awb.shipper.company || awb.shipper.name)
     setLines(lines.map((l, j) => (j !== i ? l : awb ? { ...l, ...lineFromAwb(awb) } : { ...l, tracking: value })))
   }
 
@@ -117,6 +129,7 @@ export default function InvoiceForm() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (walkIn && !billTo.trim()) return setError('Enter the name to bill to.')
     if (!lines.length) return setError('Add at least one line to the invoice.')
     if (lines.some((l) => !l.tracking.trim())) return setError('Enter a tracking # for every line.')
     const numbers = lines.map((l) => l.tracking.trim())
@@ -126,7 +139,10 @@ export default function InvoiceForm() {
 
     setSaving(true)
     try {
-      const inv = await createInvoice({ customerId, month, lines, prevBalance, received, preparedBy })
+      const inv = await createInvoice({
+        customerId: walkIn ? null : customerId,
+        customerName: walkIn ? billTo : '',
+        month, lines, prevBalance, received, preparedBy })
       navigate(`/admin/billing/${inv.id}`)
     } catch (err) {
       setError(err.message)
@@ -150,6 +166,7 @@ export default function InvoiceForm() {
         <Field label="Customer" required className="lg:col-span-2">
           <select className={inputCls} value={customerId} onChange={pickCustomer} required>
             <option value="">Select customer…</option>
+            <option value={WALK_IN}>No customer account (bill from AWB)</option>
             {customers.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.accountNo})
@@ -157,6 +174,11 @@ export default function InvoiceForm() {
             ))}
           </select>
         </Field>
+        {walkIn && (
+          <Field label="Bill to" required hint="Filled from the AWB's shipper; you can change it" className="lg:col-span-2">
+            <input className={inputCls} value={billTo} onChange={(e) => setBillTo(e.target.value)} placeholder="Name or company" required />
+          </Field>
+        )}
         <Field label="Invoice month" required>
           <input type="month" className={inputCls} value={month} onChange={pickMonth} required />
         </Field>

@@ -14,8 +14,9 @@ class Invoice(UUIDPk, Timestamps, Base):
 
     seq: Mapped[int] = mapped_column(Integer, unique=True)
     number: Mapped[str] = mapped_column(String(20), unique=True)  # INV-00001
-    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), index=True)
-    # Copied at issue time so the invoice keeps showing what was printed.
+    # None for a walk-in: billed from its airway bills without a customer account.
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id", ondelete="RESTRICT"), index=True)
+    # Copied at issue time so the invoice keeps showing what was printed (typed in for a walk-in).
     customer_name: Mapped[str] = mapped_column(String(190))
     account_no: Mapped[str] = mapped_column(String(20))
     month: Mapped[str] = mapped_column(CHAR(7), index=True)  # YYYY-MM

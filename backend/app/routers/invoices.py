@@ -52,16 +52,23 @@ def get_invoice(invoice_id: str, _: StaffUser, db: DbSession):
 
 @router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
 def create_invoice(body: InvoiceIn, user: StaffUser, db: DbSession):
-    customer = db.get(Customer, body.customer_id)
-    if not customer:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Customer account not found.")
+    if body.customer_id:
+        customer = db.get(Customer, body.customer_id)
+        if not customer:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Customer account not found.")
+        customer_id, name, account_no = customer.id, customer.name, customer.account_no
+    else:
+        name = body.customer_name.strip()
+        if not name:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter the name to bill to.")
+        customer_id, account_no = None, ""
     seq = next_number(db, "invoice")
     inv = Invoice(
         seq=seq,
         number=invoice_no(seq),
-        customer_id=customer.id,
-        customer_name=customer.name,
-        account_no=customer.account_no,
+        customer_id=customer_id,
+        customer_name=name,
+        account_no=account_no,
         month=body.month,
         prev_balance=body.prev_balance,
         received=body.received,
@@ -71,7 +78,7 @@ def create_invoice(body: InvoiceIn, user: StaffUser, db: DbSession):
     db.add(inv)
     db.flush()
     total = sum(l.amount for l in body.lines)
-    record(db, user, "invoice.create", "invoice", inv.id, f"Issued {inv.number} to {customer.name} for {body.month}: Rs {total:,.2f}")
+    record(db, user, "invoice.create", "invoice", inv.id, f"Issued {inv.number} to {name} for {body.month}: Rs {total:,.2f}")
     db.commit()
     return invoice_out(get_or_404(db, inv.id))
 

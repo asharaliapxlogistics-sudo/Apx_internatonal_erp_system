@@ -136,9 +136,11 @@ export default function InvoiceList() {
       (!q || [i.number, i.customerName, i.accountNo, monthLabel(i.month)].join(' ').toLowerCase().includes(q)),
   )
   // Each invoice carries the previous balance forward, so a customer owes their latest invoice's outstanding.
+  // Walk-in invoices (no customer account) each stand alone.
   const latest = Object.values(
     rows.reduce((acc, i) => {
-      if (!acc[i.customerId] || i.seq > acc[i.customerId].seq) acc[i.customerId] = i
+      const key = i.customerId ?? i.id
+      if (!acc[key] || i.seq > acc[key].seq) acc[key] = i
       return acc
     }, {}),
   )
@@ -229,7 +231,7 @@ export default function InvoiceList() {
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-semibold text-ink-900">{i.customerName}</p>
-                    <p className="text-xs text-slate-500">{i.accountNo}</p>
+                    <p className="text-xs text-slate-500">{i.accountNo || 'Walk-in'}</p>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{monthLabel(i.month)}</td>
                   <td className="px-4 py-3 text-right">{i.lines.length}</td>

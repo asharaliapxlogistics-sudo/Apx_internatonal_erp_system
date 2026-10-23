@@ -45,7 +45,7 @@ export default function InvoiceSheet({ invoice, customer: given }) {
             <dt>Invoice #</dt>
             <dd>{invoice.number}</dd>
             <dt>Account #</dt>
-            <dd>{invoice.accountNo}</dd>
+            <dd>{invoice.accountNo || 'Walk-in'}</dd>
             <dt>Billing month</dt>
             <dd>{monthLabel(invoice.month)}</dd>
             <dt>Invoice date</dt>

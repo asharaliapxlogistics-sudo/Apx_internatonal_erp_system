@@ -30,6 +30,7 @@ export function createInvoice(data) {
     method: 'POST',
     body: {
       customerId: data.customerId,
+      customerName: data.customerName ?? '',
       month: data.month,
       lines: data.lines.map((l) => ({ ...l, date: l.date || null, weight: numOrNull(l.weight), amount: Number(l.amount) })),
       prevBalance: num(data.prevBalance),

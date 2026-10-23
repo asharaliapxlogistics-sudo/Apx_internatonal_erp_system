@@ -88,7 +88,7 @@ export default function InvoiceView() {
             <span className={`rounded-full px-3 py-1 text-sm font-bold ${statusCls[t.status]}`}>{t.status}</span>
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {invoice.customerName} · {invoice.accountNo}
+            {invoice.customerName} · {invoice.accountNo || 'Walk-in'}
           </p>
         </div>
 

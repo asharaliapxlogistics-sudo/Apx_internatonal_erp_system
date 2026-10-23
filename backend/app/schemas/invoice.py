@@ -22,7 +22,8 @@ class LineIn(CamelModel):
 
 
 class InvoiceIn(CamelModel):
-    customer_id: str
+    customer_id: str | None = None  # None = walk-in, billed to customer_name
+    customer_name: str = Field(default="", max_length=190)
     month: str  # YYYY-MM
     lines: list[LineIn] = Field(min_length=1, max_length=1000)
     prev_balance: Decimal = Field(default=Decimal(0), max_digits=12, decimal_places=2)  # can be negative (credit)
@@ -67,7 +68,7 @@ class InvoiceOut(CamelModel):
     id: str
     seq: int
     number: str
-    customer_id: str
+    customer_id: str | None
     customer_name: str
     account_no: str
     month: str

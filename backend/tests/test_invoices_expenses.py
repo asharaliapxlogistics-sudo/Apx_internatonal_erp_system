@@ -72,3 +72,12 @@ def test_expense_date_cannot_be_in_future(client, staff):
     body = {"date": "2099-01-01", "category": "Fuel", "amount": 500}
     res = client.post("/api/expenses", headers=staff, json=body)
     assert res.status_code == 400 and "future" in res.json()["detail"]
+
+
+def test_walk_in_invoice_without_customer(client, staff):
+    body = {"customerName": "  Ali Traders ", "month": "2026-10", "lines": [{"tracking": "APX1", "amount": 900}]}
+    inv = client.post("/api/invoices", headers=staff, json=body).json()
+    assert (inv["customerId"], inv["customerName"], inv["accountNo"]) == (None, "Ali Traders", "")
+    assert inv["totals"]["payable"] == 900.0
+    # A walk-in invoice needs a name to bill to.
+    assert client.post("/api/invoices", headers=staff, json={**body, "customerName": " "}).status_code == 400
