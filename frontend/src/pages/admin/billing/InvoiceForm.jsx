@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import Combobox from '../../../components/Combobox'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
 import { getSession } from '../../../lib/auth'
 import { calcWeights, listAwbs } from '../../../lib/awb'
@@ -105,13 +106,14 @@ export default function InvoiceForm() {
   }
 
   const customer = customers.find((c) => c.id === customerId)
+  // Unbilled AWBs first; billed ones stay in the list, marked with their invoice.
   const suggested = awbs.filter(
     (a) =>
-      !billed[a.number] &&
       (walkIn
         ? !a.customerId && !a.accountNo
         : a.customerId === customerId || (customer && a.accountNo === customer.accountNo)),
   )
+  const options = [...suggested.filter((a) => !billed[a.number]), ...suggested.filter((a) => billed[a.number])].map((a) => a.number)
 
   function typeTracking(i, value) {
     const awb = awbs.find((a) => a.number === value.trim())
@@ -230,11 +232,19 @@ export default function InvoiceForm() {
                       <input type="date" className={inputCls} value={l.date} onChange={setLine(i, 'date')} required />
                     </td>
                     <td className="px-1 py-1.5">
-                      <input
+                      <Combobox
                         className={inputCls}
                         value={l.tracking}
-                        onChange={(e) => typeTracking(i, e.target.value)}
-                        list="invoice-awbs"
+                        onChange={(v) => typeTracking(i, v)}
+                        options={options.filter((n) => n === l.tracking || !lines.some((x) => x.tracking === n))}
+                        describe={(n) => {
+                          const a = awbs.find((x) => x.number === n)
+                          if (!a) return ''
+                          const info = `${a.consignee.name} · ${a.consignee.country} · ${a.service}`
+                          return billed[n] ? `${info} · already on ${billed[n]}` : info
+                        }}
+                        emptyText={walkIn ? 'No AWBs without an account. Type the AWB #.' : 'No AWBs for this customer yet. Type the AWB #.'}
+                        fixed
                         placeholder={customerId ? 'Type or pick AWB #' : 'Select customer first'}
                         disabled={!customerId}
                         required
@@ -289,15 +299,6 @@ export default function InvoiceForm() {
                 ))}
               </tbody>
             </table>
-            <datalist id="invoice-awbs">
-              {suggested
-                .filter((a) => !lines.some((l) => l.tracking === a.number))
-                .map((a) => (
-                  <option key={a.number} value={a.number}>
-                    {a.consignee.name} · {a.consignee.country}
-                  </option>
-                ))}
-            </datalist>
           </div>
         )}
       </section>

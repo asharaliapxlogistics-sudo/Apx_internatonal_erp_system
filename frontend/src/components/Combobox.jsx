@@ -3,8 +3,11 @@ import { Check, ChevronDown } from 'lucide-react'
 
 // Text input with a styled suggestion list (replaces <datalist>, whose native arrow can't be styled).
 // The user can pick a suggestion or type any other value.
-export default function Combobox({ value, onChange, options, className = '', required, placeholder, ...props }) {
+// `describe(option)` adds a grey second line, `emptyText` shows when there is nothing to suggest,
+// and `fixed` lets the list escape a scrolling parent (e.g. a wide table).
+export default function Combobox({ value, onChange, options, className = '', required, placeholder, describe, emptyText, fixed, ...props }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState(null)
   const [active, setActive] = useState(-1)
   const [typed, setTyped] = useState(false)
   const wrapRef = useRef(null)
@@ -21,11 +24,27 @@ export default function Combobox({ value, onChange, options, className = '', req
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
+  // A fixed list does not move with the page, so it closes on scroll instead.
+  useEffect(() => {
+    if (!open || !fixed) return
+    const close = (e) => !listRef.current?.contains(e.target) && setOpen(false)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [open, fixed])
+
   useEffect(() => {
     if (active >= 0) listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' })
   }, [active])
 
   function show() {
+    if (fixed) {
+      const r = wrapRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 260) })
+    }
     setOpen(true)
     setTyped(false)
     setActive(options.indexOf(value))
@@ -85,12 +104,21 @@ export default function Combobox({ value, onChange, options, className = '', req
         <ChevronDown size={16} className={`transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
+      {open && !shown.length && emptyText && !q && (
+        <p
+          style={fixed ? pos : undefined}
+          className={`${fixed ? 'fixed' : 'absolute mt-1 w-full'} z-30 min-w-48 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-xl`}
+        >
+          {emptyText}
+        </p>
+      )}
       {open && shown.length > 0 && (
         <ul
           ref={listRef}
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-60 w-full min-w-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl"
+          style={fixed ? pos : undefined}
+          className={`${fixed ? 'fixed' : 'absolute mt-1 w-full'} z-30 max-h-60 min-w-48 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl`}
         >
           {shown.map((o, i) => (
             <li
@@ -107,7 +135,10 @@ export default function Combobox({ value, onChange, options, className = '', req
                 i === active ? 'bg-brand-50 text-brand-600' : 'text-ink-900'
               }`}
             >
-              {o}
+              <span>
+                {o}
+                {describe && <span className="block text-xs text-slate-500">{describe(o)}</span>}
+              </span>
               {o === value && <Check size={14} className="text-brand-500" />}
             </li>
           ))}
