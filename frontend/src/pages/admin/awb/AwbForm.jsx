@@ -5,7 +5,7 @@ import Combobox from '../../../components/Combobox'
 import CustomsItems from '../../../components/awb/CustomsItems'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
 import { parseAddressLine } from '../../../lib/addressLine'
-import { COUNTRIES, SERVICES, calcWeights, createAwb, emptyItem, itemErrors, itemsTotal, kg, pieceVolumetric } from '../../../lib/awb'
+import { COUNTRIES, SERVICES, calcWeights, createAwb, emptyItem, updateAwb, itemErrors, itemsTotal, kg, pieceVolumetric } from '../../../lib/awb'
 import {
   INTL_PHONE_HINT,
   PK_PHONE_HINT,
@@ -163,7 +163,12 @@ function shipperFromCustomer(c) {
   }
 }
 
-export default function AwbForm() {
+// Form values (strings) from a saved AWB, for editing it.
+const text = (v) => (v === null || v === undefined ? '' : String(v))
+const partyOf = (p) => Object.fromEntries(Object.keys(emptyParty).map((k) => [k, text(p[k])]))
+
+// `existing` = a saved AWB to edit (Edit button on the AWB page); otherwise a new AWB.
+export default function AwbForm({ existing }) {
   const navigate = useNavigate()
   // "Create AWB" on Customer Addresses passes the customer and the address line they sent.
   const fromAddress = useLocation().state ?? {}
@@ -173,31 +178,55 @@ export default function AwbForm() {
   const [error, setError] = useState('')
   const [tried, setTried] = useState(false)
 
-  const [customerId, setCustomerId] = useState(initialCustomer?.id ?? '')
-  const [shipper, setShipper] = useState(() =>
-    initialCustomer ? shipperFromCustomer(initialCustomer) : { ...emptyParty, country: 'Pakistan' },
-  )
+  const [customerId, setCustomerId] = useState(existing ? (existing.customerId ?? '') : (initialCustomer?.id ?? ''))
+  const [shipper, setShipper] = useState(() => {
+    if (existing) return partyOf(existing.shipper)
+    return initialCustomer ? shipperFromCustomer(initialCustomer) : { ...emptyParty, country: 'Pakistan' }
+  })
   const [consignee, setConsignee] = useState(() => {
+    if (existing) return partyOf(existing.consignee)
     if (!fromAddress.address) return emptyParty
     const parsed = parseAddressLine(fromAddress.address)
     return { ...emptyParty, ...parsed, address: (parsed.address || fromAddress.address).slice(0, 255) }
   })
-  const [pieces, setPieces] = useState([{ ...emptyPiece }])
-  const [items, setItems] = useState([{ ...emptyItem }])
-  const [invoiceType, setInvoiceType] = useState('Gift')
+  const [pieces, setPieces] = useState(() =>
+    existing
+      ? existing.pieces.map((p) => ({ length: text(p.length), width: text(p.width), height: text(p.height) }))
+      : [{ ...emptyPiece }],
+  )
+  const [items, setItems] = useState(() =>
+    existing?.items.length
+      ? existing.items.map((i) => ({ ...emptyItem, ...i, quantity: text(i.quantity), unitPrice: text(i.unitPrice) }))
+      : [{ ...emptyItem }],
+  )
+  const [invoiceType, setInvoiceType] = useState(existing?.invoiceType ?? 'Gift')
   // Once items have prices, the declared value is their total (the server does the same).
   const itemsValue = itemsTotal(items)
-  const [form, setForm] = useState({
-    accountNo: initialCustomer?.accountNo ?? '',
-    bagNumber: '',
-    shipperReference: '',
-    actualWeight: '',
-    service: '',
-    fragile: false,
-    declaredValue: '',
-    productDetail: '',
-    comments: '',
-  })
+  const [form, setForm] = useState(() =>
+    existing
+      ? {
+          accountNo: existing.accountNo,
+          bagNumber: existing.bagNumber,
+          shipperReference: existing.shipperReference,
+          actualWeight: text(existing.actualWeight),
+          service: existing.service,
+          fragile: existing.fragile,
+          declaredValue: text(existing.declaredValue),
+          productDetail: existing.productDetail,
+          comments: existing.comments,
+        }
+      : {
+          accountNo: initialCustomer?.accountNo ?? '',
+          bagNumber: '',
+          shipperReference: '',
+          actualWeight: '',
+          service: '',
+          fragile: false,
+          declaredValue: '',
+          productDetail: '',
+          comments: '',
+        },
+  )
 
   // After a page reload the customer list arrives late; fill the shipper from the address's customer then.
   useEffect(() => {
@@ -241,7 +270,8 @@ export default function AwbForm() {
     }
     setSaving(true)
     try {
-      const awb = await createAwb({ ...form, customerId: customerId || null, shipper, consignee, pieces, items, invoiceType })
+      const data = { ...form, customerId: customerId || null, shipper, consignee, pieces, items, invoiceType }
+      const awb = existing ? await updateAwb(existing.number, data) : await createAwb(data)
       navigate(`/admin/awb/${awb.number}`)
     } catch (err) {
       setError(err.message)
@@ -254,12 +284,19 @@ export default function AwbForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
       <div>
-        <Link to="/admin/awb" className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-ink-900">
-          <ArrowLeft size={16} /> Air Waybills
+        <Link
+          to={existing ? `/admin/awb/${existing.number}` : '/admin/awb'}
+          className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-ink-900"
+        >
+          <ArrowLeft size={16} /> {existing ? `AWB ${existing.number}` : 'Air Waybills'}
         </Link>
-        <h1 className="mt-2 text-3xl font-extrabold text-ink-900">New Airway Bill</h1>
+        <h1 className="mt-2 text-3xl font-extrabold text-ink-900">
+          {existing ? `Edit AWB ${existing.number}` : 'New Airway Bill'}
+        </h1>
         <p className="mt-1 text-sm text-slate-500">
-          AWB number, date and time are generated automatically when you save.
+          {existing
+            ? 'AWB number, date and tracking history stay the same.'
+            : 'AWB number, date and time are generated automatically when you save.'}
         </p>
       </div>
 
@@ -443,7 +480,9 @@ export default function AwbForm() {
       )}
 
       <div className="flex justify-end gap-3">
-        <Link to="/admin/awb" className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100">
+        <Link
+          to={existing ? `/admin/awb/${existing.number}` : '/admin/awb'}
+          className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100">
           Cancel
         </Link>
         <button
@@ -451,7 +490,7 @@ export default function AwbForm() {
           disabled={saving}
           className="rounded-xl bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600 disabled:opacity-60"
         >
-          {saving ? 'Saving…' : 'Save & generate AWB'}
+          {saving ? 'Saving…' : existing ? 'Save changes' : 'Save & generate AWB'}
         </button>
       </div>
     </form>

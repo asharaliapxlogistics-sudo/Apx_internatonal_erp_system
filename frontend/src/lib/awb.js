@@ -99,19 +99,20 @@ export function listAwbs({ customerId } = {}) {
 
 export const getAwb = (number) => api(`/awbs/${encodeURIComponent(number)}`)
 
-export function createAwb(data) {
-  return api('/awbs', {
-    method: 'POST',
-    body: {
-      ...data,
-      customerId: data.customerId || null,
-      actualWeight: Number(data.actualWeight),
-      declaredValue: numOrNull(data.declaredValue),
-      pieces: data.pieces.map((p) => ({ length: numOrNull(p.length), width: numOrNull(p.width), height: numOrNull(p.height) })),
-      items: filledItems(data.items ?? []),
-    },
-  })
-}
+const awbBody = (data) => ({
+  ...data,
+  customerId: data.customerId || null,
+  actualWeight: Number(data.actualWeight),
+  declaredValue: numOrNull(data.declaredValue),
+  pieces: data.pieces.map((p) => ({ length: numOrNull(p.length), width: numOrNull(p.width), height: numOrNull(p.height) })),
+  items: filledItems(data.items ?? []),
+})
+
+export const createAwb = (data) => api('/awbs', { method: 'POST', body: awbBody(data) })
+
+// Edit a saved AWB; its number, date and tracking history stay.
+export const updateAwb = (number, data) =>
+  api(`/awbs/${encodeURIComponent(number)}`, { method: 'PUT', body: awbBody(data) })
 
 // Replaces the customs invoice type and items; with items, the declared value becomes their total.
 export const setCustoms = (number, { invoiceType, items }) =>

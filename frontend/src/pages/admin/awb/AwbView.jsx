@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Ban, ChevronDown, FileText, MapPin, Plus, Printer, RotateCcw, Tag, Trash2 } from 'lucide-react'
+import { ArrowLeft, Ban, ChevronDown, FileText, MapPin, Pencil, Plus, Printer, RotateCcw, Tag, Trash2 } from 'lucide-react'
 import AirwayBill from '../../../components/awb/AirwayBill'
 import LoadState from '../../../components/LoadState'
 import { useDialog } from '../../../context/Dialog'
@@ -166,6 +166,14 @@ export default function AwbView() {
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
             >
               <MapPin size={16} /> Track
+            </Link>
+          )}
+          {awb.status !== 'Void' && (
+            <Link
+              to={`/admin/awb/${awb.number}/edit`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
+            >
+              <Pencil size={16} /> Edit
             </Link>
           )}
           <Link

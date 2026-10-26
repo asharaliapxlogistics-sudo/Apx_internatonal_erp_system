@@ -173,3 +173,22 @@ def test_customs_invoice_items(client, staff):
     assert bad.status_code == 422
     bad = client.put(f"/api/awbs/{a['number']}/customs", headers=staff, json={"items": [{"description": "X", "quantity": 0, "unitPrice": 1}]})
     assert bad.status_code == 422
+
+
+def test_edit_awb_keeps_number_and_history(client, staff):
+    a = new_awb(client, staff)
+    body = {k: a[k] for k in ("service", "actualWeight", "declaredValue", "productDetail", "shipper", "consignee", "pieces")}
+    body["consignee"] = {**a["consignee"], "name": "Sara Khan", "city": "Leeds"}
+    body["pieces"] = [{"length": 50, "width": 40, "height": 30}]
+    e = client.put(f"/api/awbs/{a['number']}", headers=staff, json={**body, "service": "DHL KARACHI", "actualWeight": 3})
+    assert e.status_code == 200, e.text
+    e = e.json()
+    assert (e["number"], e["createdAt"], e["status"]) == (a["number"], a["createdAt"], "Active")
+    assert (e["service"], e["actualWeight"], e["consignee"]["name"], len(e["pieces"])) == ("DHL KARACHI", 3.0, "Sara Khan", 1)
+    s = client.get(f"/api/shipments/{a['number']}", headers=staff).json()
+    assert [ev["status"] for ev in s["events"]] == ["Booked"]
+    # The same checks as a new AWB; a void AWB cannot be edited.
+    assert client.put(f"/api/awbs/{a['number']}", headers=staff, json={**body, "actualWeight": 0}).status_code == 422
+    client.post(f"/api/awbs/{a['number']}/void", headers=staff, json={"reason": "Wrong"})
+    assert client.put(f"/api/awbs/{a['number']}", headers=staff, json=body).status_code == 409
+    assert client.put("/api/awbs/999999", headers=staff, json=body).status_code == 404

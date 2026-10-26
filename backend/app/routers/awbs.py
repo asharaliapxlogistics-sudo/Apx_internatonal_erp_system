@@ -45,12 +45,11 @@ def get_awb(number: str, _: StaffUser, db: DbSession):
     return awb_out(get_or_404(db, number))
 
 
-@router.post("", response_model=AwbOut, status_code=status.HTTP_201_CREATED)
-def create_awb(body: AwbIn, user: StaffUser, db: DbSession):
+def awb_fields(body: AwbIn, db: DbSession) -> dict:
+    """Columns set from the form, on create and on edit."""
     if body.customer_id and not db.get(Customer, body.customer_id):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Customer account not found.")
-    awb = Awb(
-        number=str(next_number(db, "awb")),
+    return dict(
         customer_id=body.customer_id or None,
         account_no=body.account_no.strip(),
         service=body.service.strip(),
@@ -67,8 +66,12 @@ def create_awb(body: AwbIn, user: StaffUser, db: DbSession):
         **party_columns("shipper", body.shipper),
         **party_columns("consignee", body.consignee),
         pieces=[AwbPiece(position=i, length=p.length, width=p.width, height=p.height) for i, p in enumerate(body.pieces)],
-        created_by=user.id,
     )
+
+
+@router.post("", response_model=AwbOut, status_code=status.HTTP_201_CREATED)
+def create_awb(body: AwbIn, user: StaffUser, db: DbSession):
+    awb = Awb(number=str(next_number(db, "awb")), created_by=user.id, **awb_fields(body, db))
     db.add(awb)
     record(db, user, "awb.create", "awb", awb.number,
            f"Created AWB {awb.number}: {awb.shipper_name} to {awb.consignee_name}, {awb.consignee_country} ({awb.service})")
@@ -76,9 +79,23 @@ def create_awb(body: AwbIn, user: StaffUser, db: DbSession):
     return awb_out(awb)
 
 
+@router.put("/{number}", response_model=AwbOut)
+def update_awb(number: str, body: AwbIn, user: StaffUser, db: DbSession):
+    """Edit a saved AWB. Number, date, status, carrier and tracking history stay as they are."""
+    awb = get_or_404(db, number)
+    if awb.status == "Void":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"AWB {number} is void. Remove the void before editing.")
+    for key, value in awb_fields(body, db).items():
+        setattr(awb, key, value)
+    record(db, user, "awb.update", "awb", number,
+           f"Edited AWB {number}: {awb.shipper_name} to {awb.consignee_name}, {awb.consignee_country} ({awb.service})")
+    db.commit()
+    return awb_out(get_or_404(db, number))
+
+
 @router.put("/{number}/customs", response_model=AwbOut)
 def set_customs(number: str, body: Customs, user: StaffUser, db: DbSession):
-    """Replaces the customs invoice type and items (AWBs are otherwise not edited after saving)."""
+    """Replaces only the customs invoice type and items."""
     awb = get_or_404(db, number)
     awb.invoice_type = body.invoice_type
     awb.items = item_rows(body)
