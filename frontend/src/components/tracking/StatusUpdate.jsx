@@ -6,7 +6,7 @@ import { STATUSES, addEvent, localDateTime, statusInfo } from '../../lib/trackin
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none'
 
-const LOCATIONS = ['Karachi', 'Karachi Airport (KHI)', 'Dubai (DXB)', 'Doha (DOH)', 'London Heathrow (LHR)', 'Manchester (MAN)', 'Birmingham (BHX)']
+const LOCATIONS = ['Karachi', 'Karachi Airport (KHI)', 'Dubai (DXB)', 'Doha (DOH)', 'London Heathrow (LHR)', 'Manchester (MAN)', 'Birmingham (BHX)', 'New York (JFK)']
 
 // Statuses where staff must say why.
 const NEEDS_REMARKS = new Set(['Customs hold', 'Exception', 'Returned'])
