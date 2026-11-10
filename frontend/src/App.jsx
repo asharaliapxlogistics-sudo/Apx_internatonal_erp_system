@@ -3,6 +3,7 @@ import { allModules } from './config/adminModules'
 import AdminLayout from './layouts/AdminLayout'
 import { getSession } from './lib/auth'
 import Login from './pages/Login'
+import AwbDailyList from './pages/admin/awb/AwbDailyList'
 import AwbEdit from './pages/admin/awb/AwbEdit'
 import AwbForm from './pages/admin/awb/AwbForm'
 import AwbInvoice from './pages/admin/awb/AwbInvoice'
@@ -87,6 +88,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="awb" element={<AwbList />} />
         <Route path="awb/new" element={<AwbForm />} />
+        <Route path="awb/daily" element={<AwbDailyList />} />
         <Route path="awb/:number" element={<AwbView />} />
         <Route path="awb/:number/edit" element={<AwbEdit />} />
         <Route path="awb/:number/invoice" element={<AwbInvoice />} />

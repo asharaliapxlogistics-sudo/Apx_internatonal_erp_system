@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FileText, Plus, Search, Trash2 } from 'lucide-react'
+import { FileText, Plus, Printer, Search, Trash2 } from 'lucide-react'
 import LoadState from '../../../components/LoadState'
 import { useDialog } from '../../../context/Dialog'
 import { useApi } from '../../../hooks/useApi'
@@ -48,12 +48,20 @@ export default function AwbList() {
           <h1 className="text-3xl font-extrabold text-ink-900">Air Waybills</h1>
           <p className="mt-1 text-sm text-slate-500">Create, print and void airway bills.</p>
         </div>
-        <Link
-          to="/admin/awb/new"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600"
-        >
-          <Plus size={18} /> New Airway Bill
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/admin/awb/daily"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 hover:bg-slate-100"
+          >
+            <Printer size={18} /> Daily List
+          </Link>
+          <Link
+            to="/admin/awb/new"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600"
+          >
+            <Plus size={18} /> New Airway Bill
+          </Link>
+        </div>
       </div>
 
       <div className="relative max-w-md">
