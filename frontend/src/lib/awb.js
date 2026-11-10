@@ -34,6 +34,7 @@ export const SERVICES = [
   'USA DUTY PAID FEDEX S.P ECO',
   'DIRECT USA DUTY PAID UPS ECONOMY',
   'DIRECT USA DUTY PAID FEDEX ECONOMY',
+  'SKYNET',
 ]
 
 // Volumetric weight per piece = L x W x H (cm) / 5000, rounded up to the next whole KG.
