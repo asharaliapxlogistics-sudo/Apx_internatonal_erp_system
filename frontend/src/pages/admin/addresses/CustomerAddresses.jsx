@@ -233,7 +233,7 @@ export default function CustomerAddresses() {
                   {g.items.map((a, i) => (
                     <tr key={a.id} className="align-top hover:bg-slate-50">
                       <td className="px-4 py-3 text-slate-400">{i + 1}</td>
-                      <td className="px-4 py-3 text-ink-900">{a.address}</td>
+                      <td className="px-4 py-3 whitespace-pre-line text-ink-900">{a.address}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-slate-500">
                         {time(a.createdAt)}
                         <p className="text-xs">{a.sentBy}</p>

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Check, ClipboardList, Pencil, Plus, Send, Trash2, X } from 'lucide-react'
 import LoadState from '../../components/LoadState'
+import { splitPastedAddresses } from '../../lib/addressLine'
 import { deleteTodayAddress, sendTodayAddresses, updateTodayAddress, useTodayAddresses } from '../data'
 import { usePortalAccount } from '../PortalAccount'
 import { Card, Empty, PageHeader, PreviewNote, btnPrimary, btnSecondary, inputCls } from '../ui'
@@ -35,9 +36,17 @@ export default function TodayAddresses() {
   }
 
   function setLine(i, value) {
-    // Pasting several lines splits them into separate addresses.
-    const parts = value.split(/\r?\n/)
-    setLines([...lines.slice(0, i), ...parts, ...lines.slice(i + 1)])
+    setLines(lines.map((l, j) => (j === i ? value : l)))
+  }
+
+  // One box = one address, over as many lines as it takes. Several rows copied from Excel
+  // are the exception: each row becomes its own address.
+  function pasteInto(i, e) {
+    const rows = splitPastedAddresses(e.clipboardData.getData('text'))
+    if (rows.length < 2) return
+    e.preventDefault()
+    const keep = lines[i].trim() ? [lines[i]] : []
+    setLines([...lines.slice(0, i), ...keep, ...rows, ...lines.slice(i + 1)])
   }
 
   async function send(e) {
@@ -94,7 +103,7 @@ export default function TodayAddresses() {
   return (
     <div className="space-y-6">
       {preview && <PreviewNote />}
-      <PageHeader title="Today's addresses" subtitle="One line per shipment. APX sees them as soon as you send." />
+      <PageHeader title="Today's addresses" subtitle="One box per shipment. APX sees them as soon as you send." />
 
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-accent-600">
@@ -103,37 +112,33 @@ export default function TodayAddresses() {
       )}
       {note && <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{note}</p>}
 
-      <Card title="Add addresses" subtitle="Press Enter for the next line. You can also paste many lines at once.">
-        <form onSubmit={send} className="space-y-2">
+      <Card
+        title="Add addresses"
+        subtitle="Paste or type the full address in a box, as many lines as you like: name, street, city, zip, country, phone, and order #, weight or product if you have them. Pasting several rows from Excel adds one box per row."
+      >
+        <form onSubmit={send} className="space-y-3">
           {lines.map((line, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
+            <div key={i} className="flex items-start gap-2">
+              <span className="mt-2.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                {i + 1}
+              </span>
+              <textarea
                 ref={lineRef(i)}
                 value={line}
                 onChange={(e) => setLine(i, e.target.value)}
-                onPaste={(e) => {
-                  const text = e.clipboardData.getData('text')
-                  if (!text.includes('\n')) return
-                  e.preventDefault()
-                  setLine(i, line + text.replace(/\r?\n$/, ''))
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addLine(i)
-                  }
-                }}
+                onPaste={(e) => pasteInto(i, e)}
+                rows={Math.min(12, Math.max(5, line.split('\n').length))}
                 maxLength={500}
-                placeholder="e.g. Sara Malik, 1 High St, London E1 6AN, UK, +44 7700 900123"
+                placeholder={'e.g.\nSara Malik\n1 High St\nLondon E1 6AN, UK\n+44 7700 900123'}
                 aria-label={`Address ${i + 1}`}
-                className={inputCls}
+                className={`${inputCls} resize-y`}
               />
               {lines.length > 1 && (
                 <button
                   type="button"
                   onClick={() => setLines(lines.filter((_, j) => j !== i))}
-                  aria-label={`Remove line ${i + 1}`}
-                  className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-accent-500"
+                  aria-label={`Remove address ${i + 1}`}
+                  className="mt-1.5 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-accent-500"
                 >
                   <X size={16} />
                 </button>
@@ -142,7 +147,7 @@ export default function TodayAddresses() {
           ))}
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <button type="button" onClick={() => addLine()} className={btnSecondary}>
-              <Plus size={16} /> Add line
+              <Plus size={16} /> Add another address
             </button>
             <button type="submit" disabled={!filled.length || saving} className={`${btnPrimary} sm:ml-auto`}>
               <Send size={16} />
@@ -158,21 +163,22 @@ export default function TodayAddresses() {
         ) : (
           <ol className="-mx-5 divide-y divide-slate-100">
             {list.map((a, i) => (
-              <li key={a.id} className="flex items-center gap-3 px-5 py-2.5">
+              <li key={a.id} className="flex items-start gap-3 px-5 py-2.5">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">{i + 1}</span>
                 {editing?.id === a.id ? (
                   <>
-                    <input
+                    <textarea
                       autoFocus
                       value={editing.address}
                       onChange={(e) => setEditing({ ...editing, address: e.target.value })}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit()
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit()
                         if (e.key === 'Escape') setEditing(null)
                       }}
+                      rows={Math.min(10, Math.max(3, editing.address.split('\n').length))}
                       maxLength={500}
                       aria-label="Edit address"
-                      className={inputCls}
+                      className={`${inputCls} resize-y`}
                     />
                     <button type="button" onClick={saveEdit} aria-label="Save" className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50">
                       <Check size={16} />
@@ -184,7 +190,7 @@ export default function TodayAddresses() {
                 ) : (
                   <>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm break-words text-ink-900">{a.address}</p>
+                      <p className="text-sm break-words whitespace-pre-line text-ink-900">{a.address}</p>
                       <p className="text-xs text-slate-400 sm:hidden">{time(a.createdAt)}</p>
                     </div>
                     <span className="hidden shrink-0 text-xs text-slate-400 sm:inline">{time(a.createdAt)}</span>

@@ -22,7 +22,10 @@ class DailyAddressIn(CamelModel):
     @field_validator("address")
     @classmethod
     def not_blank(cls, v: str) -> str:
-        v = " ".join(v.split())  # one line, single spaces
+        # Keep the customer's line breaks and tabs (pasted from an order page or Excel, the office
+        # reads the lines apart to fill the AWB); only tidy spaces and drop empty lines.
+        lines = ("\t".join(" ".join(cell.split()) for cell in line.split("\t")) for line in v.splitlines())
+        v = "\n".join(line for line in lines if line.strip())
         if not v:
             raise ValueError("Enter the address.")
         return v

@@ -4,7 +4,7 @@ import { ArrowLeft, MapPinned, Plus, Trash2 } from 'lucide-react'
 import Combobox from '../../../components/Combobox'
 import CustomsItems from '../../../components/awb/CustomsItems'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
-import { parseAddressLine } from '../../../lib/addressLine'
+import { parseCustomerAddress } from '../../../lib/addressLine'
 import { COUNTRIES, SERVICES, calcWeights, createAwb, emptyItem, updateAwb, itemErrors, itemsTotal, kg, pieceVolumetric } from '../../../lib/awb'
 import {
   INTL_PHONE_HINT,
@@ -183,11 +183,13 @@ export default function AwbForm({ existing }) {
     if (existing) return partyOf(existing.shipper)
     return initialCustomer ? shipperFromCustomer(initialCustomer) : { ...emptyParty, country: 'Pakistan' }
   })
+  // What the customer sent, read into consignee fields and shipment details (order #, weight, product).
+  const [fromSent] = useState(() => (!existing && fromAddress.address ? parseCustomerAddress(fromAddress.address) : null))
   const [consignee, setConsignee] = useState(() => {
     if (existing) return partyOf(existing.consignee)
-    if (!fromAddress.address) return emptyParty
-    const parsed = parseAddressLine(fromAddress.address)
-    return { ...emptyParty, ...parsed, address: (parsed.address || fromAddress.address).slice(0, 255) }
+    if (!fromSent) return emptyParty
+    const c = fromSent.consignee
+    return { ...emptyParty, ...c, address: (c.address || fromAddress.address.replace(/\s+/g, ' ')).slice(0, 255) }
   })
   const [pieces, setPieces] = useState(() =>
     existing
@@ -218,13 +220,13 @@ export default function AwbForm({ existing }) {
       : {
           accountNo: initialCustomer?.accountNo ?? '',
           bagNumber: '',
-          shipperReference: '',
-          actualWeight: '',
+          shipperReference: fromSent?.shipment.reference ?? '',
+          actualWeight: fromSent?.shipment.weight ?? '',
           service: '',
           fragile: false,
           declaredValue: '',
-          productDetail: '',
-          comments: '',
+          productDetail: fromSent?.shipment.product ?? '',
+          comments: fromSent?.shipment.notes ?? '',
         },
   )
 
@@ -305,9 +307,10 @@ export default function AwbForm({ existing }) {
           <MapPinned size={18} className="mt-0.5 shrink-0 text-brand-500" />
           <div>
             <p className="font-semibold text-ink-900">Address sent by the customer</p>
-            <p className="mt-1 text-ink-900">{fromAddress.address}</p>
+            <p className="mt-1 whitespace-pre-line text-ink-900">{fromAddress.address}</p>
             <p className="mt-1 text-xs text-slate-500">
-              Name, address, city, zip, country and phone were filled in from it. Check them before saving.
+              The consignee, and the reference, weight, product and comments when given, were filled in from it. Check
+              them before saving.
             </p>
           </div>
         </div>

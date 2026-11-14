@@ -24,10 +24,11 @@ def send(client, token, *lines):
 def test_customer_sends_lines_and_office_sees_them(client, admin, staff):
     acme, a_tok = customer(client, admin, "Acme", "owner@acme.com")
     bolt, b_tok = customer(client, admin, "Bolt", "owner@bolt.com")
-    res = send(client, a_tok, f"  {LINE}  ", "Omar Farooq,\n Dubai  Marina")
+    res = send(client, a_tok, f"  {LINE}  ", "Omar Farooq,\r\n\n Dubai  Marina\t+971 50 123 4567 ")
     assert res.status_code == 201, res.text
     sent = res.json()
-    assert [a["address"] for a in sent] == [LINE, "Omar Farooq, Dubai Marina"]  # trimmed to one line
+    # Spaces tidied and empty lines dropped, but line breaks and tabs kept for reading the address apart.
+    assert [a["address"] for a in sent] == [LINE, "Omar Farooq,\nDubai Marina\t+971 50 123 4567"]
     assert sent[0]["sentBy"] == "Acme Owner"
     send(client, b_tok, "Bolt consignee, Leeds")
 
@@ -35,7 +36,7 @@ def test_customer_sends_lines_and_office_sees_them(client, admin, staff):
     assert len(client.get("/api/portal/daily-addresses", headers=b_tok).json()) == 1
 
     rows = client.get("/api/daily-addresses", headers=staff).json()
-    assert [(r["customerName"], r["address"]) for r in rows] == [("Acme", LINE), ("Acme", "Omar Farooq, Dubai Marina"), ("Bolt", "Bolt consignee, Leeds")]
+    assert [(r["customerName"], r["address"]) for r in rows] == [("Acme", LINE), ("Acme", "Omar Farooq,\nDubai Marina\t+971 50 123 4567"),("Bolt", "Bolt consignee, Leeds")]
     assert rows[0]["accountNo"] == acme["accountNo"]
     assert [r["customerName"] for r in client.get(f"/api/daily-addresses?customerId={bolt['id']}", headers=staff).json()] == ["Bolt"]
     assert client.get("/api/daily-addresses?day=2000-01-01", headers=staff).json() == []
