@@ -12,6 +12,13 @@ export default function InvoiceSheet({ invoice, customer: given }) {
   const filter = useCustomerFilter()
   const customer = given ?? filter?.customers.find((c) => c.id === invoice.customerId)
   const issued = invoice.createdAt.slice(0, 10)
+  // Every amount received on this invoice gets its own row: the amount received before issuing
+  // it, then each payment recorded since. Like APX's own invoice, at least two rows are printed.
+  const receipts = [
+    ...(Number(invoice.received) ? [{ amount: invoice.received, date: '' }] : []),
+    ...(invoice.payments ?? []).map((p) => ({ amount: p.amount, date: p.date })),
+  ]
+  while (receipts.length < 2) receipts.push(null)
 
   return (
     <div className="inv-sheet">
@@ -88,7 +95,7 @@ export default function InvoiceSheet({ invoice, customer: given }) {
       <section className="inv-summary">
         <div className="inv-words">
           <p className="inv-eyebrow">Amount payable in words</p>
-          <p className="inv-words-text">Rupees {amountInWords(t.payable)} Only</p>
+          <p className="inv-words-text">Rupees {amountInWords(Math.max(0, t.outstanding))} Only</p>
           <p className="inv-count">
             {invoice.lines.length} {invoice.lines.length === 1 ? 'shipment' : 'shipments'} this month
           </p>
@@ -100,16 +107,22 @@ export default function InvoiceSheet({ invoice, customer: given }) {
             <dd>{money(t.total)}</dd>
           </div>
           <div>
-            <dt>Previous balance</dt>
+            <dt>Total prv balance</dt>
             <dd>{money(invoice.prevBalance)}</dd>
           </div>
-          <div>
-            <dt>Received amount</dt>
-            <dd>{invoice.received ? `− ${money(invoice.received)}` : money(0)}</dd>
-          </div>
+          {receipts.map((r, i) => (
+            <div key={i}>
+              <dt>
+                Received amount
+                {r?.date && <span className="inv-receipt-date"> ({shortDate(r.date)})</span>}
+              </dt>
+              <dd>{r ? `− ${money(r.amount)}` : ''}</dd>
+            </div>
+          ))}
+          {/* total + previous balance − everything received = what is still to pay */}
           <div className="inv-grand">
-            <dt>Total payable</dt>
-            <dd>Rs {money(t.payable)}</dd>
+            <dt>Total payable amount</dt>
+            <dd>Rs {money(t.outstanding)}</dd>
           </div>
         </dl>
       </section>

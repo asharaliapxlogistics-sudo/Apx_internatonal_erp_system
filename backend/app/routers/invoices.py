@@ -50,18 +50,22 @@ def get_invoice(invoice_id: str, _: StaffUser, db: DbSession):
     return invoice_out(get_or_404(db, invoice_id))
 
 
-@router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
-def create_invoice(body: InvoiceIn, user: StaffUser, db: DbSession):
+def bill_to(db: DbSession, body: InvoiceIn) -> tuple[str | None, str, str]:
+    """(customer_id, name, account_no) of the customer account, or of the walk-in name typed."""
     if body.customer_id:
         customer = db.get(Customer, body.customer_id)
         if not customer:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Customer account not found.")
-        customer_id, name, account_no = customer.id, customer.name, customer.account_no
-    else:
-        name = body.customer_name.strip()
-        if not name:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter the name to bill to.")
-        customer_id, account_no = None, ""
+        return customer.id, customer.name, customer.account_no
+    name = body.customer_name.strip()
+    if not name:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Enter the name to bill to.")
+    return None, name, ""
+
+
+@router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
+def create_invoice(body: InvoiceIn, user: StaffUser, db: DbSession):
+    customer_id, name, account_no = bill_to(db, body)
     seq = next_number(db, "invoice")
     inv = Invoice(
         seq=seq,
@@ -81,6 +85,28 @@ def create_invoice(body: InvoiceIn, user: StaffUser, db: DbSession):
     record(db, user, "invoice.create", "invoice", inv.id, f"Issued {inv.number} to {name} for {body.month}: Rs {total:,.2f}")
     db.commit()
     return invoice_out(get_or_404(db, inv.id))
+
+
+@router.put("/{invoice_id}", response_model=InvoiceOut)
+def update_invoice(invoice_id: str, body: InvoiceIn, user: StaffUser, db: DbSession):
+    """Edit an issued invoice: bill-to, month, lines and balances. Its number, date and the
+    payments recorded on it stay as they are."""
+    inv = get_or_404(db, invoice_id)
+    before = totals_of(inv).total
+    inv.customer_id, inv.customer_name, inv.account_no = bill_to(db, body)
+    inv.month = body.month
+    inv.prev_balance = body.prev_balance
+    inv.received = body.received
+    inv.prepared_by = body.prepared_by.strip() or inv.prepared_by
+    inv.lines.clear()
+    db.flush()  # old lines go before the new ones take their positions
+    inv.lines.extend(InvoiceLine(position=i, **l.model_dump()) for i, l in enumerate(body.lines))
+    total = sum(l.amount for l in body.lines)
+    record(db, user, "invoice.update", "invoice", inv.id,
+           f"Edited {inv.number} ({inv.customer_name}, {body.month}): Rs {before:,.2f} -> Rs {total:,.2f}")
+    db.commit()
+    db.expire_all()
+    return invoice_out(get_or_404(db, invoice_id))
 
 
 @router.post("/{invoice_id}/payments", response_model=InvoiceOut)

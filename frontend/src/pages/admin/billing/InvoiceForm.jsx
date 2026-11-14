@@ -5,7 +5,7 @@ import Combobox from '../../../components/Combobox'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
 import { getSession } from '../../../lib/auth'
 import { calcWeights, listAwbs } from '../../../lib/awb'
-import { NATURES, createInvoice, lastOutstanding, listInvoices, money } from '../../../lib/invoices'
+import { NATURES, createInvoice, lastOutstanding, listInvoices, money, updateInvoice } from '../../../lib/invoices'
 
 const inputCls =
   'w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-ink-900 placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 focus:outline-none'
@@ -41,25 +41,33 @@ const lineFromAwb = (awb) => ({
   weight: String(calcWeights(awb.pieces, awb.actualWeight).chargeable),
 })
 
-export default function InvoiceForm() {
+// Form values (strings) from an issued invoice's line, for editing it.
+const text = (v) => (v === null || v === undefined ? '' : String(v))
+const lineOf = (l) => ({ ...emptyLine, ...l, date: text(l.date).slice(0, 10), weight: text(l.weight), amount: text(l.amount) })
+
+// `existing` = an issued invoice to edit (Edit button on the invoice page); otherwise a new invoice.
+export default function InvoiceForm({ existing }) {
   const navigate = useNavigate()
   const { customerId: filterCustomerId, customers } = useCustomerFilter()
 
-  const [customerId, setCustomerId] = useState(filterCustomerId ?? '')
+  const startCustomerId = existing ? (existing.customerId ?? WALK_IN) : (filterCustomerId ?? '')
+  const [customerId, setCustomerId] = useState(startCustomerId)
   const walkIn = customerId === WALK_IN
-  const [billTo, setBillTo] = useState('')
-  const [month, setMonth] = useState(thisMonth)
-  const [lines, setLines] = useState(() => [newLine(thisMonth())])
-  const [prevBalance, setPrevBalance] = useState(0)
-  const [received, setReceived] = useState(0)
-  const [preparedBy, setPreparedBy] = useState(getSession()?.name ?? '')
+  const [billTo, setBillTo] = useState(existing && !existing.customerId ? existing.customerName : '')
+  const [month, setMonth] = useState(existing?.month ?? thisMonth())
+  const [lines, setLines] = useState(() => (existing ? existing.lines.map(lineOf) : [newLine(thisMonth())]))
+  const [prevBalance, setPrevBalance] = useState(existing?.prevBalance ?? 0)
+  const [received, setReceived] = useState(existing?.received ?? 0)
+  const [preparedBy, setPreparedBy] = useState(existing ? existing.preparedBy : (getSession()?.name ?? ''))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   // The customer's last outstanding balance carries over; staff can still edit it.
+  // When editing, the invoice keeps its own previous balance unless another customer is picked.
   useEffect(() => {
     let current = true
     if (!customerId || walkIn) return
+    if (existing && customerId === startCustomerId) return
     lastOutstanding(customerId).then(
       (v) => current && setPrevBalance(v),
       (err) => current && setError(`Could not load the previous balance: ${err.message}`),
@@ -67,6 +75,7 @@ export default function InvoiceForm() {
     return () => {
       current = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, walkIn])
 
   // Tracking # is typed freely. Any active AWB number fills the line; this customer's AWBs
@@ -74,6 +83,7 @@ export default function InvoiceForm() {
   // Ones already on an invoice are flagged.
   const [awbs, setAwbs] = useState([])
   const [billed, setBilled] = useState({})
+  const editingId = existing?.id
   useEffect(() => {
     let current = true
     if (!customerId) return
@@ -82,7 +92,10 @@ export default function InvoiceForm() {
         if (!current) return
         setAwbs(awbList.filter((a) => a.status !== 'Void'))
         const map = {}
-        for (const inv of invoices) for (const l of inv.lines) if (l.tracking) map[l.tracking] = inv.number
+        for (const inv of invoices) {
+          if (inv.id === editingId) continue // its own lines are not "already billed"
+          for (const l of inv.lines) if (l.tracking) map[l.tracking] = inv.number
+        }
         setBilled(map)
       },
       (err) => current && setError(`Could not load the customer's airway bills: ${err.message}`),
@@ -90,8 +103,9 @@ export default function InvoiceForm() {
     return () => {
       current = false
     }
-  }, [customerId, walkIn])
+  }, [customerId, walkIn, editingId])
 
+  const backTo = existing ? `/admin/billing/${existing.id}` : '/admin/billing'
   const total = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0)
   const payable = total + (Number(prevBalance) || 0) - (Number(received) || 0)
 
@@ -141,10 +155,11 @@ export default function InvoiceForm() {
 
     setSaving(true)
     try {
-      const inv = await createInvoice({
+      const data = {
         customerId: walkIn ? null : customerId,
         customerName: walkIn ? billTo : '',
-        month, lines, prevBalance, received, preparedBy })
+        month, lines, prevBalance, received, preparedBy }
+      const inv = existing ? await updateInvoice(existing.id, data) : await createInvoice(data)
       navigate(`/admin/billing/${inv.id}`)
     } catch (err) {
       setError(err.message)
@@ -155,12 +170,14 @@ export default function InvoiceForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <Link to="/admin/billing" className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-ink-900">
-          <ArrowLeft size={16} /> Billing & Invoices
+        <Link to={backTo} className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-ink-900">
+          <ArrowLeft size={16} /> {existing ? existing.number : 'Billing & Invoices'}
         </Link>
-        <h1 className="mt-2 text-3xl font-extrabold text-ink-900">New Invoice</h1>
+        <h1 className="mt-2 text-3xl font-extrabold text-ink-900">{existing ? `Edit ${existing.number}` : 'New Invoice'}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Pick the customer and month, then enter each shipment of the month with its amount.
+          {existing
+            ? 'Invoice number, date and the payments recorded on it stay the same.'
+            : 'Pick the customer and month, then enter each shipment of the month with its amount.'}
         </p>
       </div>
 
@@ -335,7 +352,7 @@ export default function InvoiceForm() {
       )}
 
       <div className="flex justify-end gap-3">
-        <Link to="/admin/billing" className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100">
+        <Link to={backTo} className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-100">
           Cancel
         </Link>
         <button
@@ -343,7 +360,7 @@ export default function InvoiceForm() {
           disabled={saving}
           className="rounded-xl bg-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600 disabled:opacity-60"
         >
-          {saving ? 'Saving…' : 'Create invoice'}
+          {saving ? 'Saving…' : existing ? 'Save changes' : 'Create invoice'}
         </button>
       </div>
     </form>

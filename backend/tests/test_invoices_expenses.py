@@ -44,6 +44,29 @@ def test_last_outstanding_carries_forward(client, staff):
     assert client.get(f"/api/invoices/last-outstanding?customerId={c['id']}", headers=staff).json() == 500.0
 
 
+def test_edit_invoice_keeps_number_and_payments(client, staff):
+    c = new_customer(client, staff, "Acme")
+    inv = new_invoice(client, staff, c["id"], lines=[{"amount": 1000, "tracking": "AWB1"}], preparedBy="Ali")
+    client.post(f"/api/invoices/{inv['id']}/payments", headers=staff, json={"date": "2026-10-11", "amount": 400, "method": "Cash"})
+
+    body = {"customerId": None, "customerName": "Walk-in Co", "month": "2026-11", "prevBalance": 50, "received": 0,
+            "lines": [{"amount": 700, "tracking": "AWB2"}, {"amount": 300, "tracking": "AWB1", "nature": "DOX"}]}
+    res = client.put(f"/api/invoices/{inv['id']}", headers=staff, json=body)
+    assert res.status_code == 200, res.text
+    e = res.json()
+    assert (e["number"], e["createdAt"]) == (inv["number"], inv["createdAt"])
+    assert (e["customerId"], e["customerName"], e["accountNo"], e["month"]) == (None, "Walk-in Co", "", "2026-11")
+    assert [(l["tracking"], l["amount"], l["nature"]) for l in e["lines"]] == [("AWB2", 700.0, "WPX"), ("AWB1", 300.0, "DOX")]
+    assert e["preparedBy"] == "Ali"  # blank keeps who prepared it
+    assert len(e["payments"]) == 1
+    assert e["totals"] == {"total": 1000.0, "payable": 1050.0, "paid": 400.0, "outstanding": 650.0, "status": "Partial"}
+    assert client.get(f"/api/invoices/{inv['id']}", headers=staff).json()["lines"] == e["lines"]
+
+    assert client.put(f"/api/invoices/{inv['id']}", headers=staff, json={**body, "customerName": " "}).status_code == 400
+    assert client.put(f"/api/invoices/{inv['id']}", headers=staff, json={**body, "lines": []}).status_code == 422
+    assert client.put("/api/invoices/nope", headers=staff, json=body).status_code == 404
+
+
 def test_invoice_validation_and_delete(client, staff):
     c = new_customer(client, staff)
     assert client.post("/api/invoices", headers=staff, json={"customerId": c["id"], "month": "2026-13", "lines": [{"amount": 1}]}).status_code == 422

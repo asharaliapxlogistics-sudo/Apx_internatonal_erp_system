@@ -10,6 +10,7 @@ import AwbInvoice from './pages/admin/awb/AwbInvoice'
 import AwbLabel from './pages/admin/awb/AwbLabel'
 import AwbList from './pages/admin/awb/AwbList'
 import AwbView from './pages/admin/awb/AwbView'
+import InvoiceEdit from './pages/admin/billing/InvoiceEdit'
 import InvoiceForm from './pages/admin/billing/InvoiceForm'
 import InvoiceList from './pages/admin/billing/InvoiceList'
 import InvoiceView from './pages/admin/billing/InvoiceView'
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="billing" element={<InvoiceList />} />
         <Route path="billing/new" element={<InvoiceForm />} />
         <Route path="billing/:id" element={<InvoiceView />} />
+        <Route path="billing/:id/edit" element={<InvoiceEdit />} />
         <Route path="customers" element={<CustomerList />} />
         <Route path="customer-addresses" element={<CustomerAddresses />} />
         <Route path="complaints" element={<ComplaintList />} />

@@ -25,20 +25,20 @@ export function listInvoices({ customerId } = {}) {
 
 export const getInvoice = (id) => api(invoicePath(id))
 
-export function createInvoice(data) {
-  return api('/invoices', {
-    method: 'POST',
-    body: {
-      customerId: data.customerId,
-      customerName: data.customerName ?? '',
-      month: data.month,
-      lines: data.lines.map((l) => ({ ...l, date: l.date || null, weight: numOrNull(l.weight), amount: Number(l.amount) })),
-      prevBalance: num(data.prevBalance),
-      received: num(data.received),
-      preparedBy: data.preparedBy ?? '',
-    },
-  })
-}
+const invoiceBody = (data) => ({
+  customerId: data.customerId,
+  customerName: data.customerName ?? '',
+  month: data.month,
+  lines: data.lines.map((l) => ({ ...l, date: l.date || null, weight: numOrNull(l.weight), amount: Number(l.amount) })),
+  prevBalance: num(data.prevBalance),
+  received: num(data.received),
+  preparedBy: data.preparedBy ?? '',
+})
+
+export const createInvoice = (data) => api('/invoices', { method: 'POST', body: invoiceBody(data) })
+
+// Number, date and recorded payments stay; everything else is replaced.
+export const updateInvoice = (id, data) => api(invoicePath(id), { method: 'PUT', body: invoiceBody(data) })
 
 export const addPayment = (id, payment) => api(`${invoicePath(id)}/payments`, { method: 'POST', body: payment })
 

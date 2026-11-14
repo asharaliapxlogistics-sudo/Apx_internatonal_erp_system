@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Printer, Trash2, Wallet } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Printer, Trash2, Wallet } from 'lucide-react'
 import InvoiceSheet from '../../../components/billing/InvoiceSheet'
 import LoadState from '../../../components/LoadState'
 import { useDialog } from '../../../context/Dialog'
@@ -99,6 +99,12 @@ export default function InvoiceView() {
           >
             <Trash2 size={16} /> Delete
           </button>
+          <Link
+            to={`/admin/billing/${invoice.id}/edit`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold hover:bg-slate-100"
+          >
+            <Pencil size={16} /> Edit
+          </Link>
           {t.outstanding > 0 && (
             <button
               onClick={() => setShowPay((v) => !v)}
