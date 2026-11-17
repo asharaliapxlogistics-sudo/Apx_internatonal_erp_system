@@ -149,6 +149,9 @@ function importParams({ q = '', from, to, customerId } = {}) {
 
 export const listImported = (filters) => api(`/awb-import/awbs?${importParams(filters)}`)
 
+// Deletes an imported sheet's AWBs (and their tracking history). AWBs made on the form are never deleted.
+export const deleteImported = (numbers) => api('/awb-import/delete', { method: 'POST', body: { numbers } })
+
 // Same filters as the list; one Excel tab per imported sheet.
 export const exportImported = (filters, fileName) => download(`/awb-import/export?${importParams(filters)}`, fileName)
 

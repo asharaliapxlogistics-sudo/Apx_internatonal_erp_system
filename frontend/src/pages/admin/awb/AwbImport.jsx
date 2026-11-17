@@ -9,13 +9,15 @@ import {
   Inbox,
   Loader2,
   Search,
+  Trash2,
   X,
   XCircle,
 } from 'lucide-react'
 import LoadState from '../../../components/LoadState'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
+import { useDialog } from '../../../context/Dialog'
 import { useApi } from '../../../hooks/useApi'
-import { IMPORT_FIRST_DAY, commitImport, exportImported, listImported, previewImport } from '../../../lib/awb'
+import { IMPORT_FIRST_DAY, commitImport, deleteImported, exportImported, listImported, previewImport } from '../../../lib/awb'
 
 const COLUMNS = ['Date', 'Tracking no.', 'Shipper', 'Weight (kg)', 'Country', 'Consignee', 'Service', 'Carrier']
 const field =
@@ -259,7 +261,7 @@ function Uploader({ onImported, onClose }) {
 const kgOf = (awbs) => Number(awbs.reduce((sum, a) => sum + (Number(a.actualWeight) || 0), 0).toFixed(3))
 
 // One imported sheet: its file name, totals and shipments.
-function SheetCard({ file, awbs, showDate }) {
+function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50 px-4 py-3">
@@ -271,6 +273,15 @@ function SheetCard({ file, awbs, showDate }) {
           <b className="text-ink-900">{awbs.length}</b> {awbs.length === 1 ? 'shipment' : 'shipments'} ·{' '}
           <b className="text-ink-900">{kgOf(awbs)}</b> kg
         </p>
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-accent-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Delete sheet
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -325,6 +336,28 @@ export default function AwbImport() {
   const [uploading, setUploading] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [deletingFile, setDeletingFile] = useState('')
+  const { confirm } = useDialog()
+
+  async function handleDelete(sheet) {
+    const ok = await confirm({
+      title: `Delete sheet "${sheet.file}"?`,
+      message: `${sheet.awbs.length} imported AWBs (${sheet.awbs[0].number} to ${sheet.awbs[sheet.awbs.length - 1].number}) and their tracking history will be removed permanently. This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
+    setExportError('')
+    setDeletingFile(sheet.file)
+    try {
+      await deleteImported(sheet.awbs.map((a) => a.number))
+      await reload()
+    } catch (err) {
+      setExportError(err.message)
+    } finally {
+      setDeletingFile('')
+    }
+  }
 
   async function handleExport() {
     setExporting(true)
@@ -478,7 +511,15 @@ export default function AwbImport() {
           ) : (
             <div className="space-y-5">
               {sheets.map((s) => (
-                <SheetCard key={s.file} file={s.file} awbs={s.awbs} showDate={!!q} />
+                <SheetCard
+                  key={s.file}
+                  file={s.file}
+                  awbs={s.awbs}
+                  showDate={!!q}
+                  deleting={deletingFile === s.file}
+                  // Search shows only matching rows, so a sheet is deleted from the date view, where it is whole.
+                  onDelete={q ? null : () => handleDelete(s)}
+                />
               ))}
             </div>
           )}

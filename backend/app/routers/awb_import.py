@@ -256,7 +256,31 @@ def imported_awbs(_: StaffUser, awbs: Imported):
     return [awb_out(a) for a in awbs]
 
 
-EXPORT_HEADINGS = ["Date", "Tracking No.", "Shipper", "Weight (kg)", "Country", "Consignee", "Service", "Carrier", "AWB #"]
+class DeleteIn(CamelModel):
+    numbers: list[str] = Field(min_length=1, max_length=MAX_ROWS)
+
+
+class DeleteOut(CamelModel):
+    deleted: int
+
+
+@router.post("/delete", response_model=DeleteOut)
+def delete_imported(body: DeleteIn, user: StaffUser, db: DbSession):
+    """Deletes an imported sheet: its AWBs and their tracking history. AWBs made on the form are never touched."""
+    awbs = list(db.scalars(select(Awb).where(Awb.number.in_(set(body.numbers)), Awb.import_file != "")))
+    if not awbs:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No imported AWBs found to delete.")
+    files = sorted({a.import_file for a in awbs})
+    numbers = sorted(a.number for a in awbs)
+    record(db, user, "awb.import_delete", "awb", numbers[0],
+           f"Deleted {len(awbs)} imported AWBs from {', '.join(files)} ({numbers[0]} to {numbers[-1]})")
+    for a in awbs:
+        db.delete(a)  # pieces, items and tracking events go with it (ON DELETE CASCADE)
+    db.commit()
+    return DeleteOut(deleted=len(awbs))
+
+
+EXPORT_HEADINGS =["Date", "Tracking No.", "Shipper", "Weight (kg)", "Country", "Consignee", "Service", "Carrier", "AWB #"]
 
 
 def sheet_title(name: str, used: set[str]) -> str:

@@ -82,6 +82,15 @@ def test_import_preview_and_commit(client, staff):
     again = upload(client, staff, [[d, "9205590123456789012345", "X", 1, "USA", "Y", "WPX", "FEDEX"]]).json()["rows"]
     assert "Already imported" in again[0]["errors"][0]
 
+    # Deleting the sheet removes only imported AWBs; a form-made AWB number in the list is ignored.
+    from tests.test_awbs_shipments import new_awb
+    manual = new_awb(client, staff)["number"]
+    res = client.post("/api/awb-import/delete", headers=staff, json={"numbers": [*created, manual]})
+    assert res.status_code == 200 and res.json()["deleted"] == 2
+    assert client.get(f"/api/awbs/{created[0]}", headers=staff).status_code == 404
+    assert client.get(f"/api/awbs/{manual}", headers=staff).status_code == 200
+    assert client.post("/api/awb-import/delete", headers=staff, json={"numbers": [manual]}).status_code == 404
+
     # Sheets start from July 2026.
     old = upload(client, staff, [[datetime(2026, 6, 30), "", "X", 1, "USA", "Y", "WPX", "FEDEX"]]).json()["rows"]
     assert old[0]["errors"] == ["Date is before July 2026."]
