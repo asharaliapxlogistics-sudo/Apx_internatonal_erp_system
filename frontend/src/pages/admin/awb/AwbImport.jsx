@@ -349,7 +349,12 @@ export default function AwbImport() {
   const { customerId } = useCustomerFilter()
   const [today] = useState(() => localDay(new Date()))
   const [day, setDay] = useState(today)
-  const [focus, setFocus] = useState(null) // { day, file } of the sheet the search opened
+  const [focus, setFocusState] = useState(null) // { day, file } of the sheet the search opened
+  const [showAll, setShowAll] = useState(false) // while searching: every sheet of the date, not just the selected one
+  const setFocus = (f) => {
+    setFocusState(f)
+    setShowAll(false)
+  }
   const [query, setQuery] = useState('')
   const [q, setQ] = useState('') // search sent to the server, a moment after typing stops
   const [uploading, setUploading] = useState(false)
@@ -399,6 +404,9 @@ export default function AwbImport() {
     if (!sheet) sheets.push((sheet = { file: a.importFile, awbs: [] }))
     sheet.awbs.push(a)
   }
+  // While searching, the sheet the search opened is "selected": shown on its own with Export / Delete.
+  const selected = q && focus && focus.day === day ? (sheets.find((s) => s.file === focus.file) ?? null) : null
+  const visibleSheets = selected && !showAll ? [selected] : sheets
   const dayLabel = new Date(`${day}T00:00:00`).toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -435,6 +443,7 @@ export default function AwbImport() {
     setDeletingFile(sheet.file)
     try {
       await deleteImported(sheet.awbs.map((a) => a.number))
+      setFocus(null)
       await reload()
       if (q) hitsApi.reload()
     } catch (err) {
@@ -569,6 +578,36 @@ export default function AwbImport() {
             )}
           </div>
         )}
+
+        {selected && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-500 bg-brand-50 px-4 py-3">
+            <FileSpreadsheet size={22} className="shrink-0 text-emerald-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-brand-600 uppercase">Selected sheet</p>
+              <p className="truncate font-bold text-ink-900">{selected.file}</p>
+              <p className="text-sm text-slate-600">
+                {shortDay(new Date(`${day}T00:00:00`))} · {selected.awbs.length}{' '}
+                {selected.awbs.length === 1 ? 'shipment' : 'shipments'} · {kgOf(selected.awbs)} kg
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleExport(selected.file)}
+                disabled={exportingFile === selected.file}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-ink-900 hover:bg-slate-100 disabled:opacity-50"
+              >
+                {exportingFile === selected.file ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Export
+              </button>
+              <button
+                onClick={() => handleDelete(selected)}
+                disabled={deletingFile === selected.file}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-accent-500 px-3.5 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-50"
+              >
+                {deletingFile === selected.file ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} Delete sheet
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {data === undefined ? (
@@ -602,7 +641,15 @@ export default function AwbImport() {
             </div>
           ) : (
             <div className="space-y-5">
-              {sheets.map((s) => (
+              {selected && sheets.length > 1 && (
+                <button
+                  onClick={() => setShowAll((v) => !v)}
+                  className="text-sm font-semibold text-brand-500 hover:text-accent-500"
+                >
+                  {showAll ? 'Show only the selected sheet' : `Show all ${sheets.length} sheets of this date`}
+                </button>
+              )}
+              {visibleSheets.map((s) => (
                 <SheetCard
                   key={s.file}
                   file={s.file}
