@@ -138,8 +138,9 @@ export const commitImport = (fileName, rows) => api('/awb-import/commit', { meth
 // Imported sheets start from July 2026; keep in step with FIRST_DAY in backend/app/routers/awb_import.py.
 export const IMPORT_FIRST_DAY = '2026-07-01'
 
-function importParams({ q = '', from, to, customerId } = {}) {
+function importParams({ q = '', from, to, customerId, file } = {}) {
   const params = new URLSearchParams()
+  if (file) params.set('file', file)
   if (q.trim()) params.set('q', q.trim())
   if (from) params.set('from', from)
   if (to) params.set('to', to)

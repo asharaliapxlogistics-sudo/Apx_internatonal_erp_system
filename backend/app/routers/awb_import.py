@@ -223,6 +223,7 @@ def find_imported(
     date_from: date = Query(FIRST_DAY, alias="from"),
     date_to: date | None = Query(None, alias="to"),
     customer_id: str | None = Query(None, alias="customerId"),
+    file: str = "",
 ) -> list[Awb]:
     """AWBs made by Excel import, newest first, filtered by booking date and a search."""
     date_from = max(date_from, FIRST_DAY)
@@ -238,6 +239,8 @@ def find_imported(
     )
     if customer_id:
         stmt = stmt.where(Awb.customer_id == customer_id)
+    if file:
+        stmt = stmt.where(Awb.import_file == file)  # one imported sheet
     if q.strip():
         like = f"%{q.strip()}%"
         stmt = stmt.where(or_(

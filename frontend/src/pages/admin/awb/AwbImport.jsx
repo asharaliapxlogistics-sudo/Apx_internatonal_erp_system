@@ -62,7 +62,7 @@ function Uploader({ onImported, onClose }) {
     try {
       setResult(await commitImport(preview.fileName, ready))
       setPreview(null)
-      onImported(ready[0]?.date)
+      onImported(ready[0]?.date, preview.fileName)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -260,10 +260,24 @@ function Uploader({ onImported, onClose }) {
 
 const kgOf = (awbs) => Number(awbs.reduce((sum, a) => sum + (Number(a.actualWeight) || 0), 0).toFixed(3))
 
-// One imported sheet: its file name, totals and shipments.
-function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
+// Download name for a sheet: the name it was imported under.
+const xlsxName = (file) => (/\.xlsx$/i.test(file) ? file : `${file.replace(/\.xlsm$/i, '')}.xlsx`)
+
+// One imported sheet: its file name, totals and shipments. Rows found by the search are highlighted.
+function SheetCard({ file, awbs, hits, focused, onExport, exporting, onDelete, deleting }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [focused])
+
+  const action = 'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold disabled:opacity-50'
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div
+      ref={ref}
+      className={`scroll-mt-24 overflow-hidden rounded-2xl border bg-white ${
+        focused ? 'border-brand-500 ring-4 ring-brand-100' : 'border-slate-200'
+      }`}
+    >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50 px-4 py-3">
         <p className="flex min-w-0 items-center gap-2 font-bold text-ink-900">
           <FileSpreadsheet size={18} className="shrink-0 text-emerald-600" />
@@ -273,15 +287,14 @@ function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
           <b className="text-ink-900">{awbs.length}</b> {awbs.length === 1 ? 'shipment' : 'shipments'} ·{' '}
           <b className="text-ink-900">{kgOf(awbs)}</b> kg
         </p>
-        {onDelete && (
-          <button
-            onClick={onDelete}
-            disabled={deleting}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-accent-600 hover:bg-red-50 disabled:opacity-50"
-          >
-            {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Delete sheet
+        <div className="ml-auto flex gap-1">
+          <button onClick={onExport} disabled={exporting} className={`${action} text-ink-900 hover:bg-slate-200/60`}>
+            {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Export
           </button>
-        )}
+          <button onClick={onDelete} disabled={deleting} className={`${action} text-accent-600 hover:bg-red-50`}>
+            {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Delete
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -289,7 +302,6 @@ function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
             <tr>
               <th className="px-4 py-2.5">#</th>
               <th className="px-4 py-2.5">AWB #</th>
-              {showDate && <th className="px-4 py-2.5">Date</th>}
               <th className="px-4 py-2.5">Tracking</th>
               <th className="px-4 py-2.5">Shipper</th>
               <th className="px-4 py-2.5">Consignee</th>
@@ -301,7 +313,12 @@ function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {awbs.map((a, i) => (
-              <tr key={a.number} className={`hover:bg-slate-50 ${a.status === 'Void' ? 'opacity-50' : ''}`}>
+              <tr
+                key={a.number}
+                className={`${hits.has(a.number) ? 'bg-amber-100 hover:bg-amber-200/70' : 'hover:bg-slate-50'} ${
+                  a.status === 'Void' ? 'opacity-50' : ''
+                }`}
+              >
                 <td className="px-4 py-2.5 text-slate-400">{i + 1}</td>
                 <td className="px-4 py-2.5 whitespace-nowrap">
                   <Link to={`/admin/awb/${a.number}`} className="font-bold text-brand-500 hover:text-accent-500">
@@ -309,7 +326,6 @@ function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
                   </Link>
                   {a.status === 'Void' && <span className="ml-1.5 text-xs font-semibold text-accent-600">Void</span>}
                 </td>
-                {showDate && <td className="px-4 py-2.5 whitespace-nowrap text-slate-500">{shortDay(new Date(a.createdAt))}</td>}
                 <td className="px-4 py-2.5 font-mono text-xs">{a.carrierTracking || <span className="text-slate-400">—</span>}</td>
                 <td className="px-4 py-2.5">{a.shipper.name}</td>
                 <td className="px-4 py-2.5 font-semibold text-ink-900">{a.consignee.name}</td>
@@ -326,62 +342,54 @@ function SheetCard({ file, awbs, showDate, onDelete, deleting }) {
   )
 }
 
-// Pick a date to see every sheet imported for it; searching looks across all dates from July 2026.
+const noHits = () => Promise.resolve(null)
+
+// Pick a date to see every sheet imported for it. A search finds the sheet and opens it on its date.
 export default function AwbImport() {
   const { customerId } = useCustomerFilter()
   const [today] = useState(() => localDay(new Date()))
   const [day, setDay] = useState(today)
+  const [focus, setFocus] = useState(null) // { day, file } of the sheet the search opened
   const [query, setQuery] = useState('')
   const [q, setQ] = useState('') // search sent to the server, a moment after typing stops
   const [uploading, setUploading] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState('')
+  const [exportingFile, setExportingFile] = useState(null) // file name, or '' for the whole day
+  const [actionError, setActionError] = useState('')
   const [deletingFile, setDeletingFile] = useState('')
   const { confirm } = useDialog()
-
-  async function handleDelete(sheet) {
-    const ok = await confirm({
-      title: `Delete sheet "${sheet.file}"?`,
-      message: `${sheet.awbs.length} imported AWBs (${sheet.awbs[0].number} to ${sheet.awbs[sheet.awbs.length - 1].number}) and their tracking history will be removed permanently. This cannot be undone.`,
-      confirmText: 'Delete',
-      danger: true,
-    })
-    if (!ok) return
-    setExportError('')
-    setDeletingFile(sheet.file)
-    try {
-      await deleteImported(sheet.awbs.map((a) => a.number))
-      await reload()
-    } catch (err) {
-      setExportError(err.message)
-    } finally {
-      setDeletingFile('')
-    }
-  }
-
-  async function handleExport() {
-    setExporting(true)
-    setExportError('')
-    try {
-      const filters = q ? { q, customerId } : { from: day, to: day, customerId }
-      const safe = q.replace(/[^\w-]+/g, '-').slice(0, 30)
-      await exportImported(filters, q ? `imported-search-${safe}.xlsx` : `imported-shipments-${day}.xlsx`)
-    } catch (err) {
-      setExportError(err.message)
-    } finally {
-      setExporting(false)
-    }
-  }
 
   useEffect(() => {
     const t = setTimeout(() => setQ(query.trim()), 300)
     return () => clearTimeout(t)
   }, [query])
 
-  const { data, error, loading, reload } = useApi(
-    () => listImported(q ? { q, customerId } : { from: day, to: day, customerId }),
-    [q, day, customerId],
-  )
+  const { data, error, loading, reload } = useApi(() => listImported({ from: day, to: day, customerId }), [day, customerId])
+  const hitsApi = useApi(() => (q ? listImported({ q, customerId }) : noHits()), [q, customerId])
+  const hitList = q ? (hitsApi.data ?? null) : null
+
+  // Where the search found matches: one entry per sheet and date, newest first.
+  const found = []
+  for (const a of hitList ?? []) {
+    const d = localDay(new Date(a.createdAt))
+    let f = found.find((x) => x.day === d && x.file === a.importFile)
+    if (!f) found.push((f = { day: d, file: a.importFile, count: 0 }))
+    f.count += 1
+  }
+  const hits = new Set((hitList ?? []).map((a) => a.number))
+
+  // A new search result opens its newest sheet on that sheet's date.
+  useEffect(() => {
+    if (!hitsApi.data?.length) return
+    const a = hitsApi.data[0]
+    const d = localDay(new Date(a.createdAt))
+    setDay(d)
+    setFocus({ day: d, file: a.importFile })
+  }, [hitsApi.data])
+
+  function openFound(f) {
+    setDay(f.day)
+    setFocus({ day: f.day, file: f.file })
+  }
 
   const list = data ?? []
   // Sheets in the order they were imported (oldest first), rows in sheet order.
@@ -398,6 +406,44 @@ export default function AwbImport() {
     year: 'numeric',
   })
 
+  // `file` = one sheet, saved under its imported name; none = the whole day (one tab per sheet).
+  async function handleExport(file) {
+    setExportingFile(file ?? '')
+    setActionError('')
+    try {
+      const only = file ?? (sheets.length === 1 ? sheets[0].file : null)
+      await exportImported(
+        { from: day, to: day, customerId, file: file ?? undefined },
+        only ? xlsxName(only) : `imported-shipments-${day}.xlsx`,
+      )
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setExportingFile(null)
+    }
+  }
+
+  async function handleDelete(sheet) {
+    const ok = await confirm({
+      title: `Delete sheet "${sheet.file}"?`,
+      message: `${sheet.awbs.length} imported AWBs (${sheet.awbs[0].number} to ${sheet.awbs[sheet.awbs.length - 1].number}) and their tracking history will be removed permanently. This cannot be undone.`,
+      confirmText: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
+    setActionError('')
+    setDeletingFile(sheet.file)
+    try {
+      await deleteImported(sheet.awbs.map((a) => a.number))
+      await reload()
+      if (q) hitsApi.reload()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setDeletingFile('')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -407,12 +453,12 @@ export default function AwbImport() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={handleExport}
-            disabled={exporting || list.length === 0}
-            title={list.length === 0 ? 'Nothing to export for this view' : 'Download what is shown below as Excel'}
+            onClick={() => handleExport()}
+            disabled={exportingFile !== null || list.length === 0}
+            title={list.length === 0 ? 'Nothing to export for this date' : 'Download every sheet of this date as Excel'}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 hover:bg-slate-100 disabled:opacity-40"
           >
-            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Export Excel
+            {exportingFile === '' ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Export Excel
           </button>
           {!uploading && (
             <button
@@ -425,17 +471,18 @@ export default function AwbImport() {
         </div>
       </div>
 
-      {exportError && (
+      {actionError && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-accent-600">
-          {exportError}
+          {actionError}
         </p>
       )}
 
       {uploading && (
         <Uploader
-          onImported={(sheetDay) => {
-            // Jump to the imported sheet's date so it shows below.
+          onImported={(sheetDay, fileName) => {
+            // Open the imported sheet on its date so it shows below.
             setQuery('')
+            setFocus(sheetDay ? { day: sheetDay, file: fileName } : null)
             if (sheetDay && sheetDay !== day) setDay(sheetDay)
             else reload()
           }}
@@ -443,38 +490,85 @@ export default function AwbImport() {
         />
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <label className="text-xs font-semibold text-slate-500">
-          Date
-          <input
-            type="date"
-            value={day}
-            min={IMPORT_FIRST_DAY}
-            max={today}
-            disabled={!!q}
-            onChange={(e) => e.target.value && setDay(e.target.value < IMPORT_FIRST_DAY ? IMPORT_FIRST_DAY : e.target.value)}
-            className={`${field} mt-1 block disabled:opacity-50`}
-          />
-        </label>
-        <label className="relative min-w-0 flex-1 sm:max-w-md">
-          <span className="sr-only">Search</span>
-          <Search size={18} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search tracking, AWB, shipper, consignee, file…"
-            className={`${field} w-full pr-10 pl-11`}
-          />
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              aria-label="Clear search"
-              className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-ink-900"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </label>
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="text-xs font-semibold text-slate-500">
+            Date
+            <input
+              type="date"
+              value={day}
+              min={IMPORT_FIRST_DAY}
+              max={today}
+              onChange={(e) => {
+                if (!e.target.value) return
+                setDay(e.target.value < IMPORT_FIRST_DAY ? IMPORT_FIRST_DAY : e.target.value)
+                setFocus(null)
+              }}
+              className={`${field} mt-1 block`}
+            />
+          </label>
+          <label className="relative min-w-0 flex-1 sm:max-w-md">
+            <span className="sr-only">Search</span>
+            <Search size={18} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search tracking, AWB, shipper, consignee, file…"
+              className={`${field} w-full pr-10 pl-11`}
+            />
+            {query && (
+              <button
+                onClick={() => {
+                  setQuery('')
+                  setFocus(null)
+                }}
+                aria-label="Clear search"
+                className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-ink-900"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </label>
+        </div>
+
+        {q && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {hitsApi.loading && !hitList ? (
+              <span className="flex items-center gap-1.5 text-slate-500">
+                <Loader2 size={15} className="animate-spin" /> Searching…
+              </span>
+            ) : hitsApi.error ? (
+              <span className="text-accent-600">{hitsApi.error.message}</span>
+            ) : found.length === 0 ? (
+              <span className="text-slate-500">
+                No imported shipment matches <b className="text-ink-900">{q}</b>.
+              </span>
+            ) : (
+              <>
+                <span className="text-slate-500">
+                  <b className="text-ink-900">{q}</b> found in:
+                </span>
+                {found.map((f) => {
+                  const active = !!focus && focus.day === f.day && focus.file === f.file && day === f.day
+                  return (
+                    <button
+                      key={`${f.day}|${f.file}`}
+                      onClick={() => openFound(f)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium ${
+                        active
+                          ? 'border-brand-500 bg-brand-50 text-brand-600'
+                          : 'border-slate-300 bg-white text-ink-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <FileSpreadsheet size={14} /> {f.file} · {shortDay(new Date(`${f.day}T00:00:00`))}
+                      <span className="rounded-full bg-amber-100 px-1.5 text-xs font-bold text-amber-800">{f.count}</span>
+                    </button>
+                  )
+                })}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {data === undefined ? (
@@ -482,7 +576,7 @@ export default function AwbImport() {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
-            <span className="font-semibold text-ink-900">{q ? `Search results for “${q}” (all dates)` : dayLabel}</span>
+            <span className="font-semibold text-ink-900">{dayLabel}</span>
             <span>
               <b className="text-ink-900">{sheets.length}</b> {sheets.length === 1 ? 'sheet' : 'sheets'}
             </span>
@@ -499,10 +593,8 @@ export default function AwbImport() {
           {sheets.length === 0 ? (
             <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
               <Inbox size={36} className="text-slate-300" />
-              <p className="mt-4 font-semibold text-ink-900">
-                {q ? 'No matching imported shipments' : 'No sheets imported for this date'}
-              </p>
-              {!q && !uploading && (
+              <p className="mt-4 font-semibold text-ink-900">No sheets imported for this date</p>
+              {!uploading && (
                 <button onClick={() => setUploading(true)} className="mt-2 text-sm font-semibold text-brand-500 hover:text-accent-500">
                   Upload an Excel file
                 </button>
@@ -515,10 +607,12 @@ export default function AwbImport() {
                   key={s.file}
                   file={s.file}
                   awbs={s.awbs}
-                  showDate={!!q}
+                  hits={hits}
+                  focused={!!focus && focus.day === day && focus.file === s.file}
+                  exporting={exportingFile === s.file}
+                  onExport={() => handleExport(s.file)}
                   deleting={deletingFile === s.file}
-                  // Search shows only matching rows, so a sheet is deleted from the date view, where it is whole.
-                  onDelete={q ? null : () => handleDelete(s)}
+                  onDelete={() => handleDelete(s)}
                 />
               ))}
             </div>

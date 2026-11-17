@@ -74,6 +74,10 @@ def test_import_preview_and_commit(client, staff):
     assert values[0][:3] == ["Date", "Tracking No.", "Shipper"]
     assert values[1][1] == "9205590123456789012345" and values[1][5] == "ERIKA HUDSON" and values[1][8] == created[0]
     assert values[-1][0] == "Total" and values[-1][3] == 3.0
+    # One sheet only, by its imported file name.
+    one = client.get("/api/awb-import/export", headers=staff, params={"from": "2026-11-10", "to": "2026-11-10", "file": "10 Nov.xlsx"})
+    assert load_workbook(BytesIO(one.content)).sheetnames == ["10 Nov"]
+    assert listed(file="other.xlsx", to="2026-11-30") == []
     # An empty view still downloads a valid file.
     empty = client.get("/api/awb-import/export", headers=staff, params={"from": "2026-11-11", "to": "2026-11-11"})
     assert load_workbook(BytesIO(empty.content)).sheetnames == ["No shipments"]
