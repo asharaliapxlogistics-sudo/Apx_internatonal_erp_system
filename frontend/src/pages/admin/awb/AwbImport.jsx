@@ -7,7 +7,6 @@ import {
   FileUp,
   Inbox,
   Loader2,
-  RotateCcw,
   Search,
   X,
   XCircle,
@@ -60,7 +59,7 @@ function Uploader({ onImported, onClose }) {
     try {
       setResult(await commitImport(preview.fileName, ready))
       setPreview(null)
-      onImported()
+      onImported(ready[0]?.date)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -256,33 +255,98 @@ function Uploader({ onImported, onClose }) {
   )
 }
 
-// Imported shipments, with search and a date range from July 2026, plus the Excel upload.
+const kgOf = (awbs) => Number(awbs.reduce((sum, a) => sum + (Number(a.actualWeight) || 0), 0).toFixed(3))
+
+// One imported sheet: its file name, totals and shipments.
+function SheetCard({ file, awbs, showDate }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <p className="flex min-w-0 items-center gap-2 font-bold text-ink-900">
+          <FileSpreadsheet size={18} className="shrink-0 text-emerald-600" />
+          <span className="truncate">{file}</span>
+        </p>
+        <p className="text-sm text-slate-500">
+          <b className="text-ink-900">{awbs.length}</b> {awbs.length === 1 ? 'shipment' : 'shipments'} ·{' '}
+          <b className="text-ink-900">{kgOf(awbs)}</b> kg
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs font-semibold text-slate-500 uppercase">
+            <tr>
+              <th className="px-4 py-2.5">#</th>
+              <th className="px-4 py-2.5">AWB #</th>
+              {showDate && <th className="px-4 py-2.5">Date</th>}
+              <th className="px-4 py-2.5">Tracking</th>
+              <th className="px-4 py-2.5">Shipper</th>
+              <th className="px-4 py-2.5">Consignee</th>
+              <th className="px-4 py-2.5">Country</th>
+              <th className="px-4 py-2.5">Service</th>
+              <th className="px-4 py-2.5">Carrier</th>
+              <th className="px-4 py-2.5 text-right">Kg</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {awbs.map((a, i) => (
+              <tr key={a.number} className={`hover:bg-slate-50 ${a.status === 'Void' ? 'opacity-50' : ''}`}>
+                <td className="px-4 py-2.5 text-slate-400">{i + 1}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  <Link to={`/admin/awb/${a.number}`} className="font-bold text-brand-500 hover:text-accent-500">
+                    {a.number}
+                  </Link>
+                  {a.status === 'Void' && <span className="ml-1.5 text-xs font-semibold text-accent-600">Void</span>}
+                </td>
+                {showDate && <td className="px-4 py-2.5 whitespace-nowrap text-slate-500">{shortDay(new Date(a.createdAt))}</td>}
+                <td className="px-4 py-2.5 font-mono text-xs">{a.carrierTracking || <span className="text-slate-400">—</span>}</td>
+                <td className="px-4 py-2.5">{a.shipper.name}</td>
+                <td className="px-4 py-2.5 font-semibold text-ink-900">{a.consignee.name}</td>
+                <td className="px-4 py-2.5">{a.consignee.country}</td>
+                <td className="px-4 py-2.5">{a.service}</td>
+                <td className="px-4 py-2.5">{a.carrier}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">{a.actualWeight}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// Pick a date to see every sheet imported for it; searching looks across all dates from July 2026.
 export default function AwbImport() {
   const { customerId } = useCustomerFilter()
   const [today] = useState(() => localDay(new Date()))
-  const [from, setFrom] = useState(IMPORT_FIRST_DAY)
-  const [to, setTo] = useState(today)
+  const [day, setDay] = useState(today)
   const [query, setQuery] = useState('')
   const [q, setQ] = useState('') // search sent to the server, a moment after typing stops
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
-    const t = setTimeout(() => setQ(query), 300)
+    const t = setTimeout(() => setQ(query.trim()), 300)
     return () => clearTimeout(t)
   }, [query])
 
-  const { data, error, loading, reload } = useApi(() => listImported({ q, from, to, customerId }), [q, from, to, customerId])
+  const { data, error, loading, reload } = useApi(
+    () => listImported(q ? { q, customerId } : { from: day, to: day, customerId }),
+    [q, day, customerId],
+  )
 
-  const filtered = q || from !== IMPORT_FIRST_DAY || to !== today
   const list = data ?? []
-  const totalKg = list.reduce((sum, a) => sum + (Number(a.actualWeight) || 0), 0)
-
-  function clearFilters() {
-    setQuery('')
-    setQ('')
-    setFrom(IMPORT_FIRST_DAY)
-    setTo(today)
+  // Sheets in the order they were imported (oldest first), rows in sheet order.
+  const sheets = []
+  for (const a of [...list].reverse()) {
+    let sheet = sheets.find((s) => s.file === a.importFile)
+    if (!sheet) sheets.push((sheet = { file: a.importFile, awbs: [] }))
+    sheet.awbs.push(a)
   }
+  const dayLabel = new Date(`${day}T00:00:00`).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
   return (
     <div className="space-y-6">
@@ -301,51 +365,50 @@ export default function AwbImport() {
         )}
       </div>
 
-      {uploading && <Uploader onImported={reload} onClose={() => setUploading(false)} />}
+      {uploading && (
+        <Uploader
+          onImported={(sheetDay) => {
+            // Jump to the imported sheet's date so it shows below.
+            setQuery('')
+            if (sheetDay && sheetDay !== day) setDay(sheetDay)
+            else reload()
+          }}
+          onClose={() => setUploading(false)}
+        />
+      )}
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-        <label className="relative min-w-0 flex-1 lg:max-w-md">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label className="text-xs font-semibold text-slate-500">
+          Date
+          <input
+            type="date"
+            value={day}
+            min={IMPORT_FIRST_DAY}
+            max={today}
+            disabled={!!q}
+            onChange={(e) => e.target.value && setDay(e.target.value < IMPORT_FIRST_DAY ? IMPORT_FIRST_DAY : e.target.value)}
+            className={`${field} mt-1 block disabled:opacity-50`}
+          />
+        </label>
+        <label className="relative min-w-0 flex-1 sm:max-w-md">
           <span className="sr-only">Search</span>
           <Search size={18} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search tracking, AWB, shipper, consignee, file…"
-            className={`${field} w-full pl-11`}
+            className={`${field} w-full pr-10 pl-11`}
           />
-        </label>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs font-semibold text-slate-500">
-            From
-            <input
-              type="date"
-              value={from}
-              min={IMPORT_FIRST_DAY}
-              max={to}
-              onChange={(e) => setFrom(e.target.value && e.target.value >= IMPORT_FIRST_DAY ? e.target.value : IMPORT_FIRST_DAY)}
-              className={`${field} mt-1 block`}
-            />
-          </label>
-          <label className="text-xs font-semibold text-slate-500">
-            To
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={(e) => setTo(e.target.value || today)}
-              className={`${field} mt-1 block`}
-            />
-          </label>
-          {filtered && (
+          {query && (
             <button
-              onClick={clearFilters}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-ink-900 hover:bg-slate-100"
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute top-1/2 right-2.5 -translate-y-1/2 rounded-lg p-1 text-slate-400 hover:text-ink-900"
             >
-              <RotateCcw size={15} /> Clear
+              <X size={16} />
             </button>
           )}
-        </div>
+        </label>
       </div>
 
       {data === undefined ? (
@@ -353,67 +416,37 @@ export default function AwbImport() {
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+            <span className="font-semibold text-ink-900">{q ? `Search results for “${q}” (all dates)` : dayLabel}</span>
+            <span>
+              <b className="text-ink-900">{sheets.length}</b> {sheets.length === 1 ? 'sheet' : 'sheets'}
+            </span>
             <span>
               <b className="text-ink-900">{list.length}</b> {list.length === 1 ? 'shipment' : 'shipments'}
             </span>
             <span>
-              <b className="text-ink-900">{Number(totalKg.toFixed(3))}</b> kg
+              <b className="text-ink-900">{kgOf(list)}</b> kg
             </span>
             {loading && <Loader2 size={15} className="animate-spin" />}
             {error && <span className="text-accent-600">{error.message}</span>}
           </div>
 
-          {list.length === 0 ? (
+          {sheets.length === 0 ? (
             <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
               <Inbox size={36} className="text-slate-300" />
-              <p className="mt-4 font-semibold text-ink-900">{filtered ? 'No matching imported shipments' : 'Nothing imported yet'}</p>
-              {!filtered && !uploading && (
+              <p className="mt-4 font-semibold text-ink-900">
+                {q ? 'No matching imported shipments' : 'No sheets imported for this date'}
+              </p>
+              {!q && !uploading && (
                 <button onClick={() => setUploading(true)} className="mt-2 text-sm font-semibold text-brand-500 hover:text-accent-500">
-                  Upload the first Excel file
+                  Upload an Excel file
                 </button>
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase">
-                  <tr>
-                    <th className="px-4 py-3">AWB #</th>
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Tracking</th>
-                    <th className="px-4 py-3">Shipper</th>
-                    <th className="px-4 py-3">Consignee</th>
-                    <th className="px-4 py-3">Country</th>
-                    <th className="px-4 py-3">Service</th>
-                    <th className="px-4 py-3">Carrier</th>
-                    <th className="px-4 py-3 text-right">Kg</th>
-                    <th className="px-4 py-3">File</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {list.map((a) => (
-                    <tr key={a.number} className={`hover:bg-slate-50 ${a.status === 'Void' ? 'opacity-50' : ''}`}>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <Link to={`/admin/awb/${a.number}`} className="font-bold text-brand-500 hover:text-accent-500">
-                          {a.number}
-                        </Link>
-                        {a.status === 'Void' && <span className="ml-1.5 text-xs font-semibold text-accent-600">Void</span>}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-500">{shortDay(new Date(a.createdAt))}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{a.carrierTracking || <span className="text-slate-400">—</span>}</td>
-                      <td className="px-4 py-3">{a.shipper.name}</td>
-                      <td className="px-4 py-3 font-semibold text-ink-900">{a.consignee.name}</td>
-                      <td className="px-4 py-3">{a.consignee.country}</td>
-                      <td className="px-4 py-3">{a.service}</td>
-                      <td className="px-4 py-3">{a.carrier}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{a.actualWeight}</td>
-                      <td className="max-w-48 truncate px-4 py-3 text-xs text-slate-500" title={a.importFile}>
-                        {a.importFile}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-5">
+              {sheets.map((s) => (
+                <SheetCard key={s.file} file={s.file} awbs={s.awbs} showDate={!!q} />
+              ))}
             </div>
           )}
         </>
