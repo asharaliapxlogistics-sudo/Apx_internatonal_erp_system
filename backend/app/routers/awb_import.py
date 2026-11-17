@@ -8,19 +8,22 @@ from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 from openpyxl import load_workbook
 from pydantic import Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.orm import selectinload
 
 from app.deps import DbSession, StaffUser
 from app.models import Awb, AwbPiece, Customer
-from app.schemas.common import OFFICE_TZ, CamelModel, office_now
+from app.schemas.awb import AwbOut, awb_out
+from app.schemas.common import OFFICE_TZ, CamelModel, office_day_bounds_utc, office_now
 from app.services.audit import record
 from app.services.numbers import next_number
 
 router = APIRouter(prefix="/api/awb-import", tags=["air waybills"])
 
+FIRST_DAY = date(2026, 7, 1)  # imported sheets start from July 2026
 MAX_ROWS = 2000
 MAX_BYTES = 10 * 1024 * 1024
 
@@ -58,6 +61,7 @@ class PreviewOut(CamelModel):
 
 
 class CommitIn(CamelModel):
+    file_name: str = Field(default="", max_length=190)
     rows: list[ImportRow] = Field(min_length=1, max_length=MAX_ROWS)
 
 
@@ -124,6 +128,8 @@ def is_header(cells: list) -> bool:
 def check_row(r: ImportRow, db: DbSession, customers: dict[str, Customer], seen: set[str]) -> ImportRow:
     """Fills customer match, errors and warnings. Rows with errors are not imported."""
     r.errors, r.warnings = [], []
+    if r.date < FIRST_DAY:
+        r.errors.append("Date is before July 2026.")
     if not r.consignee:
         r.errors.append("Consignee name is missing.")
     if r.weight is None or r.weight <= 0:
@@ -208,6 +214,39 @@ async def preview(file: UploadFile, _: StaffUser, db: DbSession):
     return PreviewOut(file_name=name, rows=rows)
 
 
+@router.get("/awbs", response_model=list[AwbOut])
+def imported_awbs(
+    _: StaffUser,
+    db: DbSession,
+    q: str = "",
+    date_from: date = Query(FIRST_DAY, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    customer_id: str | None = Query(None, alias="customerId"),
+):
+    """AWBs made by Excel import, newest first, filtered by booking date and a search."""
+    date_from = max(date_from, FIRST_DAY)
+    date_to = date_to or office_now().date()
+    if date_to < date_from:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The 'to' date is before the 'from' date.")
+    start, _end = office_day_bounds_utc(date_from)
+    _start, end = office_day_bounds_utc(date_to)
+    stmt = (
+        select(Awb).options(selectinload(Awb.pieces))
+        .where(Awb.import_file != "", Awb.created_at >= start, Awb.created_at <= end)
+        .order_by(Awb.created_at.desc(), Awb.number.desc())
+    )
+    if customer_id:
+        stmt = stmt.where(Awb.customer_id == customer_id)
+    if q.strip():
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(or_(
+            Awb.number.like(like), Awb.carrier_tracking.like(like), Awb.shipper_name.like(like),
+            Awb.consignee_name.like(like), Awb.consignee_country.like(like), Awb.service.like(like),
+            Awb.carrier.like(like), Awb.import_file.like(like),
+        ))
+    return [awb_out(a) for a in db.scalars(stmt)]
+
+
 def booked_at(day: date) -> datetime:
     """Midday office time on the sheet's date, as naive UTC, so the AWB lands on that day's list."""
     return datetime(day.year, day.month, day.day, 12, tzinfo=OFFICE_TZ).astimezone(UTC).replace(tzinfo=None)
@@ -220,6 +259,7 @@ def commit(body: CommitIn, user: StaffUser, db: DbSession):
     by_id = {c.id: c for c in customers.values()}
     seen: set[str] = set()
     created, skipped = [], []
+    file_name = body.file_name.strip() or "Excel import"
     number = next_number(db, "awb")
     for r in body.rows:
         check_row(r, db, customers, seen)
@@ -251,6 +291,7 @@ def commit(body: CommitIn, user: StaffUser, db: DbSession):
             consignee_phone="",
             carrier=r.carrier,
             carrier_tracking=r.tracking,
+            import_file=file_name,
             created_by=user.id,
             created_at=booked_at(r.date),
             pieces=[AwbPiece(position=0)],
@@ -260,6 +301,6 @@ def commit(body: CommitIn, user: StaffUser, db: DbSession):
         number += 1
     if created:
         record(db, user, "awb.import", "awb", created[0],
-               f"Imported {len(created)} AWBs from Excel ({created[0]} to {created[-1]}), {len(skipped)} rows skipped")
+               f"Imported {len(created)} AWBs from {file_name} ({created[0]} to {created[-1]}), {len(skipped)} rows skipped")
     db.commit()
     return CommitOut(created=created, skipped=skipped)

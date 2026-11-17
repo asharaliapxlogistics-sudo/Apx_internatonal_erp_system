@@ -52,6 +52,9 @@ class Awb(Timestamps, Base):
     carrier: Mapped[str] = mapped_column(String(40), default="")
     carrier_tracking: Mapped[str] = mapped_column(String(255), default="", index=True)
 
+    # Excel file the AWB was imported from (Import Files); blank for AWBs made on the form.
+    import_file: Mapped[str] = mapped_column(String(190), default="", server_default="", index=True)
+
     # Customs invoice printed with the AWB: its heading (Gift / Commercial / ...) and item lines.
     invoice_type: Mapped[str] = mapped_column(String(20), default="Gift")
 

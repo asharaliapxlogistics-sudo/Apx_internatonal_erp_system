@@ -120,6 +120,7 @@ class AwbOut(AwbBase):
     voided_at: UtcDateTime | None
     carrier: str
     carrier_tracking: str
+    import_file: str = ""
     created_at: UtcDateTime
 
 
@@ -158,6 +159,7 @@ def awb_out(awb) -> AwbOut:
         voided_at=awb.voided_at,
         carrier=awb.carrier,
         carrier_tracking=awb.carrier_tracking,
+        import_file=awb.import_file,
         created_at=awb.created_at,
         invoice_type=awb.invoice_type,
         items=[

@@ -40,7 +40,7 @@ def test_import_preview_and_commit(client, staff):
     assert "earlier in this file" in dup["errors"][0]
     assert len(bad["errors"]) == 2 and bad["country"] == "United Kingdom"
 
-    out = client.post("/api/awb-import/commit", headers=staff, json={"rows": rows})
+    out = client.post("/api/awb-import/commit", headers=staff, json={"fileName": "10 Nov.xlsx", "rows": rows})
     assert out.status_code == 200, out.text
     created = out.json()["created"]
     assert len(created) == 2 and len(out.json()["skipped"]) == 2
@@ -54,9 +54,24 @@ def test_import_preview_and_commit(client, staff):
     assert client.get("/api/awbs", headers=staff).status_code == 200
     assert client.get("/api/shipments", headers=staff).status_code == 200
 
+    assert awb["importFile"] == "10 Nov.xlsx"
+
+    # Imported list: search and date range (from July 2026).
+    listed = lambda **p: [a["number"] for a in client.get("/api/awb-import/awbs", headers=staff, params=p).json()]
+    assert sorted(listed(to="2026-11-30")) == sorted(created)
+    assert listed(q="9205590123456789012345", to="2026-11-30") == [created[0]]
+    assert listed(q="kaley", to="2026-11-30") == [created[1]]
+    assert listed(**{"from": "2026-11-11", "to": "2026-11-30"}) == []
+    assert listed(**{"from": "2026-01-01", "to": "2026-11-10"}) != []  # earlier "from" is treated as July 2026
+    assert client.get("/api/awb-import/awbs", headers=staff, params={"from": "2026-11-12", "to": "2026-11-11"}).status_code == 400
+
     # Uploading the same sheet again finds the tracking number already imported.
     again = upload(client, staff, [[d, "9205590123456789012345", "X", 1, "USA", "Y", "WPX", "FEDEX"]]).json()["rows"]
     assert "Already imported" in again[0]["errors"][0]
+
+    # Sheets start from July 2026.
+    old = upload(client, staff, [[datetime(2026, 6, 30), "", "X", 1, "USA", "Y", "WPX", "FEDEX"]]).json()["rows"]
+    assert old[0]["errors"] == ["Date is before July 2026."]
 
 
 def test_import_rejects_non_excel(client, staff):
