@@ -23,13 +23,15 @@ function messageOf(data, status) {
 
 export async function api(path, { method = 'GET', body, auth = true } = {}) {
   const headers = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // FormData (file uploads) sets its own multipart Content-Type.
+  const isForm = body instanceof FormData
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
   const token = auth ? getSession()?.token : null
   if (token) headers.Authorization = `Bearer ${token}`
 
   let res
   try {
-    res = await fetch(`${BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    res = await fetch(`${BASE}${path}`, { method, headers, body: body === undefined || isForm ? body : JSON.stringify(body) })
   } catch {
     throw new ApiError('Cannot reach the server. Check your internet connection, or that the backend is running.', 0)
   }

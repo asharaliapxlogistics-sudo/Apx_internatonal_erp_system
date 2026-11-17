@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import AwbDailyList from './pages/admin/awb/AwbDailyList'
 import AwbEdit from './pages/admin/awb/AwbEdit'
 import AwbForm from './pages/admin/awb/AwbForm'
+import AwbImport from './pages/admin/awb/AwbImport'
 import AwbInvoice from './pages/admin/awb/AwbInvoice'
 import AwbLabel from './pages/admin/awb/AwbLabel'
 import AwbList from './pages/admin/awb/AwbList'
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="awb" element={<AwbList />} />
         <Route path="awb/new" element={<AwbForm />} />
         <Route path="awb/daily" element={<AwbDailyList />} />
+        <Route path="import-files" element={<AwbImport />} />
         <Route path="awb/:number" element={<AwbView />} />
         <Route path="awb/:number/edit" element={<AwbEdit />} />
         <Route path="awb/:number/invoice" element={<AwbInvoice />} />

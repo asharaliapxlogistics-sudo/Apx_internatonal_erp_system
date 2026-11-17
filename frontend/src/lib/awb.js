@@ -127,6 +127,14 @@ export const restoreAwb = (number) => api(`/awbs/${encodeURIComponent(number)}/r
 // Its tracking history is removed with it.
 export const deleteAwb = (number) => api(`/awbs/${encodeURIComponent(number)}`, { method: 'DELETE' })
 
+// Excel import: read the sheet first (nothing saved), then save the checked rows as AWBs.
+export function previewImport(file) {
+  const form = new FormData()
+  form.append('file', file)
+  return api('/awb-import/preview', { method: 'POST', body: form })
+}
+export const commitImport = (rows) => api('/awb-import/commit', { method: 'POST', body: { rows } })
+
 // `page` = tracking page address from Settings; falls back to VITE_TRACKING_URL, then this site's /track.
 export function trackingUrl(number, page) {
   const base = page || import.meta.env.VITE_TRACKING_URL || `${window.location.origin}/track`

@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
 from app.database import engine
-from app.routers import audit, auth, awbs, complaints, customers, daily_addresses, dashboard, expenses, invoices, portal, reports, settings as settings_router, shipments, users
+from app.routers import audit, auth, awb_import, awbs, complaints, customers, daily_addresses, dashboard, expenses, invoices, portal, reports, settings as settings_router, shipments, users
 
 app = FastAPI(title="APX ERP API")
 
@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 
-for module in (auth, users, customers, awbs, shipments, invoices, expenses, dashboard, reports, settings_router, audit, portal):
+for module in (auth, users, customers, awbs, awb_import,shipments, invoices, expenses, dashboard, reports, settings_router, audit, portal):
     app.include_router(module.router)
 app.include_router(portal.public)
 app.include_router(daily_addresses.portal)

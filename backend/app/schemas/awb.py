@@ -8,13 +8,14 @@ from app.schemas.validators import NtnOrCnic, OptionalEmail, is_pakistan, letter
 
 
 class Party(CamelModel):
-    name: str = Field(min_length=1, max_length=190)
+    # Saved AWBs may have blanks (rows imported from Excel carry no addresses); the form requires them (PartyIn).
+    name: str = Field(default="", max_length=190)
     company: str = Field(default="", max_length=190)
-    address: str = Field(min_length=1, max_length=255)
-    city: str = Field(min_length=1, max_length=80)
+    address: str = Field(default="", max_length=255)
+    city: str = Field(default="", max_length=80)
     zip: str = Field(default="", max_length=20)
-    country: str = Field(min_length=1, max_length=80)
-    phone: str = Field(min_length=1, max_length=40)
+    country: str = Field(default="", max_length=80)
+    phone: str = Field(default="", max_length=40)
     email: str = Field(default="", max_length=190)
     ntn_cnic: str = Field(default="", max_length=30)  # shipper only
 
@@ -24,7 +25,10 @@ class PartyIn(Party):
     number and a 5-digit postal code; others need a full international number."""
 
     name: letters("Name") = Field(min_length=1, max_length=190)
+    address: str = Field(min_length=1, max_length=255)
     city: letters("City") = Field(min_length=1, max_length=80)
+    country: str = Field(min_length=1, max_length=80)
+    phone: str = Field(min_length=1, max_length=40)
     email: OptionalEmail = Field(default="", max_length=190)
     ntn_cnic: NtnOrCnic = Field(default="", max_length=30)
 
@@ -109,6 +113,7 @@ class AwbIn(AwbBase):
 
 
 class AwbOut(AwbBase):
+    product_detail: str = ""  # blank on AWBs imported from Excel
     number: str
     status: str  # Active / Void
     void_reason: str

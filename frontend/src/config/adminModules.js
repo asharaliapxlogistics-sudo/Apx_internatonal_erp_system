@@ -2,6 +2,7 @@ import {
   BarChart3,
   Building2,
   FileText,
+  FileUp,
   LayoutDashboard,
   MapPinned,
   MessageSquareWarning,
@@ -24,6 +25,7 @@ export const moduleGroups = [
     label: 'Operations',
     modules: [
       { path: '/admin/awb', label: 'Air Waybills', icon: FileText, ready: true },
+      { path: '/admin/import-files', label: 'Import Files', icon: FileUp, ready: true },
       { path: '/admin/billing', label: 'Billing & Invoices', icon: Receipt, ready: true },
       { path: '/admin/customers', label: 'Customers', icon: Building2, ready: true },
       { path: '/admin/customer-addresses', label: 'Customer Addresses', icon: MapPinned, ready: true },
