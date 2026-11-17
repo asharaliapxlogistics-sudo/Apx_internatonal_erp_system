@@ -8,8 +8,11 @@ from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, status
-from openpyxl import load_workbook
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, status
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill
 from pydantic import Field
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -17,7 +20,7 @@ from sqlalchemy.orm import selectinload
 from app.deps import DbSession, StaffUser
 from app.models import Awb, AwbPiece, Customer
 from app.schemas.awb import AwbOut, awb_out
-from app.schemas.common import OFFICE_TZ, CamelModel, office_day_bounds_utc, office_now
+from app.schemas.common import OFFICE_TZ, CamelModel, office_day_bounds_utc, office_now, utc_to_office
 from app.services.audit import record
 from app.services.numbers import next_number
 
@@ -214,15 +217,13 @@ async def preview(file: UploadFile, _: StaffUser, db: DbSession):
     return PreviewOut(file_name=name, rows=rows)
 
 
-@router.get("/awbs", response_model=list[AwbOut])
-def imported_awbs(
-    _: StaffUser,
+def find_imported(
     db: DbSession,
     q: str = "",
     date_from: date = Query(FIRST_DAY, alias="from"),
     date_to: date | None = Query(None, alias="to"),
     customer_id: str | None = Query(None, alias="customerId"),
-):
+) -> list[Awb]:
     """AWBs made by Excel import, newest first, filtered by booking date and a search."""
     date_from = max(date_from, FIRST_DAY)
     date_to = date_to or office_now().date()
@@ -244,7 +245,72 @@ def imported_awbs(
             Awb.consignee_name.like(like), Awb.consignee_country.like(like), Awb.service.like(like),
             Awb.carrier.like(like), Awb.import_file.like(like),
         ))
-    return [awb_out(a) for a in db.scalars(stmt)]
+    return list(db.scalars(stmt))
+
+
+Imported = Annotated[list[Awb], Depends(find_imported)]
+
+
+@router.get("/awbs", response_model=list[AwbOut])
+def imported_awbs(_: StaffUser, awbs: Imported):
+    return [awb_out(a) for a in awbs]
+
+
+EXPORT_HEADINGS = ["Date", "Tracking No.", "Shipper", "Weight (kg)", "Country", "Consignee", "Service", "Carrier", "AWB #"]
+
+
+def sheet_title(name: str, used: set[str]) -> str:
+    """Excel tab name: no []:*?/\\ characters, at most 31 long, unique in the workbook."""
+    base = "".join("_" if ch in '[]:*?/\\' else ch for ch in name.rsplit(".", 1)[0]).strip() or "Sheet"
+    title, n = base[:31], 2
+    while title.lower() in used:
+        suffix = f" ({n})"
+        title, n = base[: 31 - len(suffix)] + suffix, n + 1
+    used.add(title.lower())
+    return title
+
+
+@router.get("/export")
+def export_imported(_: StaffUser, awbs: Imported):
+    """The imported shipments as an Excel file, one tab per imported sheet, in the import column order."""
+    groups: dict[str, list[Awb]] = {}
+    for a in reversed(awbs):  # oldest first, rows in sheet order
+        groups.setdefault(a.import_file, []).append(a)
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    used: set[str] = set()
+    for file, rows in groups.items() or {"No shipments": []}.items():
+        ws = wb.create_sheet(sheet_title(file, used))
+        ws.append(EXPORT_HEADINGS)
+        for cell in ws[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill("solid", fgColor="0F766E")
+        for a in rows:
+            ws.append([
+                utc_to_office(a.created_at).date(), a.carrier_tracking, a.shipper_name, float(a.actual_weight),
+                a.consignee_country, a.consignee_name, a.service, a.carrier, a.number,
+            ])
+            r = ws.max_row
+            ws.cell(r, 1).number_format = "DD-MMM-YY"
+            ws.cell(r, 2).number_format = "@"  # tracking stays text, never 9.2E+21
+            ws.cell(r, 9).number_format = "@"
+        if rows:
+            ws.append(["Total", f"{len(rows)} shipments", "", float(sum(a.actual_weight for a in rows))])
+            for cell in ws[ws.max_row]:
+                cell.font = Font(bold=True)
+        for col, width in zip("ABCDEFGHI", (12, 26, 22, 12, 16, 26, 12, 12, 12)):
+            ws.column_dimensions[col].width = width
+        ws.freeze_panes = "A2"
+
+    buf = BytesIO()
+    wb.save(buf)
+    stamp = office_now().strftime("%Y-%m-%d")
+    return Response(
+        buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="imported-shipments-{stamp}.xlsx"'},
+    )
 
 
 def booked_at(day: date) -> datetime:

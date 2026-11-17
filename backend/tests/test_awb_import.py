@@ -1,7 +1,7 @@
 from datetime import datetime
 from io import BytesIO
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 
 def sheet_bytes(rows):
@@ -64,6 +64,19 @@ def test_import_preview_and_commit(client, staff):
     assert listed(**{"from": "2026-11-11", "to": "2026-11-30"}) == []
     assert listed(**{"from": "2026-01-01", "to": "2026-11-10"}) != []  # earlier "from" is treated as July 2026
     assert client.get("/api/awb-import/awbs", headers=staff, params={"from": "2026-11-12", "to": "2026-11-11"}).status_code == 400
+
+    # Export: one tab per imported sheet, tracking kept as full text.
+    exp = client.get("/api/awb-import/export", headers=staff, params={"from": "2026-11-10", "to": "2026-11-10"})
+    assert exp.status_code == 200 and exp.headers["content-type"].startswith("application/vnd.openxmlformats")
+    wb = load_workbook(BytesIO(exp.content))
+    assert wb.sheetnames == ["10 Nov"]
+    values = [list(r) for r in wb["10 Nov"].iter_rows(values_only=True)]
+    assert values[0][:3] == ["Date", "Tracking No.", "Shipper"]
+    assert values[1][1] == "9205590123456789012345" and values[1][5] == "ERIKA HUDSON" and values[1][8] == created[0]
+    assert values[-1][0] == "Total" and values[-1][3] == 3.0
+    # An empty view still downloads a valid file.
+    empty = client.get("/api/awb-import/export", headers=staff, params={"from": "2026-11-11", "to": "2026-11-11"})
+    assert load_workbook(BytesIO(empty.content)).sheetnames == ["No shipments"]
 
     # Uploading the same sheet again finds the tracking number already imported.
     again = upload(client, staff, [[d, "9205590123456789012345", "X", 1, "USA", "Y", "WPX", "FEDEX"]]).json()["rows"]

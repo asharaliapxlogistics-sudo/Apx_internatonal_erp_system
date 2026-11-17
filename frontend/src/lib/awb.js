@@ -1,5 +1,5 @@
 // Air Waybills, stored by the backend. AWB numbers are issued by the server.
-import { api } from './api'
+import { api, download } from './api'
 
 // Suggestions on the AWB forms (office and customer portal).
 export const COUNTRIES = [
@@ -138,14 +138,19 @@ export const commitImport = (fileName, rows) => api('/awb-import/commit', { meth
 // Imported sheets start from July 2026; keep in step with FIRST_DAY in backend/app/routers/awb_import.py.
 export const IMPORT_FIRST_DAY = '2026-07-01'
 
-export function listImported({ q = '', from, to, customerId } = {}) {
+function importParams({ q = '', from, to, customerId } = {}) {
   const params = new URLSearchParams()
   if (q.trim()) params.set('q', q.trim())
   if (from) params.set('from', from)
   if (to) params.set('to', to)
   if (customerId) params.set('customerId', customerId)
-  return api(`/awb-import/awbs?${params}`)
+  return params
 }
+
+export const listImported = (filters) => api(`/awb-import/awbs?${importParams(filters)}`)
+
+// Same filters as the list; one Excel tab per imported sheet.
+export const exportImported = (filters, fileName) => download(`/awb-import/export?${importParams(filters)}`, fileName)
 
 // `page` = tracking page address from Settings; falls back to VITE_TRACKING_URL, then this site's /track.
 export function trackingUrl(number, page) {

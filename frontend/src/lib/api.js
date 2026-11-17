@@ -21,6 +21,28 @@ function messageOf(data, status) {
   return `Request failed (${status}).`
 }
 
+// Fetches a file (e.g. an Excel export) with the login token and saves it in the browser.
+// `fileName` wins over the server's name when given.
+export async function download(path, fileName) {
+  const token = getSession()?.token
+  let res
+  try {
+    res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  } catch {
+    throw new ApiError('Cannot reach the server. Check your internet connection, or that the backend is running.', 0)
+  }
+  if (!res.ok) throw new ApiError(messageOf(await res.json().catch(() => null), res.status), res.status)
+  const name = fileName || /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1] || 'download'
+  const url = URL.createObjectURL(await res.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export async function api(path, { method = 'GET', body, auth = true } = {}) {
   const headers = { Accept: 'application/json' }
   // FormData (file uploads) sets its own multipart Content-Type.

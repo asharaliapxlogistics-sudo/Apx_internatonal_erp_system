@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
   FileSpreadsheet,
   FileUp,
   Inbox,
@@ -14,7 +15,7 @@ import {
 import LoadState from '../../../components/LoadState'
 import { useCustomerFilter } from '../../../context/CustomerFilter'
 import { useApi } from '../../../hooks/useApi'
-import { IMPORT_FIRST_DAY, commitImport, listImported, previewImport } from '../../../lib/awb'
+import { IMPORT_FIRST_DAY, commitImport, exportImported, listImported, previewImport } from '../../../lib/awb'
 
 const COLUMNS = ['Date', 'Tracking no.', 'Shipper', 'Weight (kg)', 'Country', 'Consignee', 'Service', 'Carrier']
 const field =
@@ -322,6 +323,22 @@ export default function AwbImport() {
   const [query, setQuery] = useState('')
   const [q, setQ] = useState('') // search sent to the server, a moment after typing stops
   const [uploading, setUploading] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
+
+  async function handleExport() {
+    setExporting(true)
+    setExportError('')
+    try {
+      const filters = q ? { q, customerId } : { from: day, to: day, customerId }
+      const safe = q.replace(/[^\w-]+/g, '-').slice(0, 30)
+      await exportImported(filters, q ? `imported-search-${safe}.xlsx` : `imported-shipments-${day}.xlsx`)
+    } catch (err) {
+      setExportError(err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setQ(query.trim()), 300)
@@ -355,15 +372,31 @@ export default function AwbImport() {
           <h1 className="text-3xl font-extrabold text-ink-900">Import Files</h1>
           <p className="mt-1 text-sm text-slate-500">Shipments imported from Excel. Each row is saved as an Air Waybill.</p>
         </div>
-        {!uploading && (
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setUploading(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600"
+            onClick={handleExport}
+            disabled={exporting || list.length === 0}
+            title={list.length === 0 ? 'Nothing to export for this view' : 'Download what is shown below as Excel'}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 hover:bg-slate-100 disabled:opacity-40"
           >
-            <FileUp size={18} /> Upload Excel
+            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Export Excel
           </button>
-        )}
+          {!uploading && (
+            <button
+              onClick={() => setUploading(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-500/25 hover:bg-accent-600"
+            >
+              <FileUp size={18} /> Upload Excel
+            </button>
+          )}
+        </div>
       </div>
+
+      {exportError && (
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-accent-600">
+          {exportError}
+        </p>
+      )}
 
       {uploading && (
         <Uploader
